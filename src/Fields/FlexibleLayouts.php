@@ -40,6 +40,10 @@ final class FlexibleLayouts extends Field
 
     private bool $disableSort = false;
 
+    private bool $asTabs = false;
+
+    private bool $isSearchable = false;
+
     protected function assets(): array
     {
         return [
@@ -100,6 +104,44 @@ final class FlexibleLayouts extends Field
         $this->disableSort = true;
 
         return $this;
+    }
+
+    /**
+     * Render blocks as tabs instead of collapsible accordions.
+     * Tab bar shows block titles, content area shows active block's fields.
+     * Delete and add buttons are below the content area.
+     */
+    public function asTabs(): self
+    {
+        $this->asTabs = true;
+
+        return $this;
+    }
+
+    /**
+     * Enable search in the block type dropdown.
+     */
+    public function searchable(Closure|bool|null $condition = null): self
+    {
+        $this->isSearchable = value($condition) ?? true;
+
+        return $this;
+    }
+
+    public function isTabbed(): bool
+    {
+        return $this->asTabs;
+    }
+
+    /**
+     * @return array<string, string> Map of block name => title for JS tab rendering
+     */
+    public function getBlockTitles(): array
+    {
+        return $this
+            ->blocks()
+            ->mapWithKeys(fn (BlockContract $block): array => [$block->name() => $block->title()])
+            ->toArray();
     }
 
     public function dropdown(Dropdown $dropdown): self
@@ -166,7 +208,7 @@ final class FlexibleLayouts extends Field
     public function getDropdown(): Dropdown
     {
         if (is_null($this->dropdown)) {
-            $this->dropdown = Dropdown::make();
+            $this->dropdown = Dropdown::make()->searchable($this->isSearchable);
         }
 
         return $this->dropdown
@@ -389,6 +431,8 @@ final class FlexibleLayouts extends Field
             'addRoute' => $this->getAddRoute(),
             'blocks' => $this->getFilledBlocks(),
             'dropdown' => $this->getDropdown(),
+            'asTabs' => $this->asTabs,
+            'blockTitles' => $this->getBlockTitles(),
         ];
     }
 }

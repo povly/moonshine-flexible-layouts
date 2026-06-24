@@ -152,6 +152,16 @@ final class Block implements BlockContract
     }
 
     /**
+     * Render only the fields content without Collapse wrapper (for tab mode).
+     *
+     * @throws Throwable
+     */
+    public function renderContent(): string
+    {
+        return (string) FieldsGroup::make($this->fields());
+    }
+
+    /**
      * @throws Throwable
      */
     public function toHtml(): string
