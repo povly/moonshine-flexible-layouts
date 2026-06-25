@@ -106,7 +106,7 @@ final class Block implements BlockContract
         $html = '';
 
         if ($button = $this->getRemoveButton()) {
-            $html .= '<div class="flex justify-end mb-2">'.(string) $button.'</div>';
+            $html .= '<div class="_fl-block-header">'.(string) $button.'</div>';
         }
 
         $html .= (string) FieldsGroup::make($this->fields());

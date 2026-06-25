@@ -166,7 +166,9 @@ final class FlexibleLayouts extends Field
         }
 
         if (is_null($this->addButton)) {
-            $this->addButton = ActionButton::make('Add block')
+            $this->addButton = ActionButton::make(
+                __('flexible-layouts::messages.add_block')
+            )
                 ->secondary();
         }
 
@@ -182,7 +184,6 @@ final class FlexibleLayouts extends Field
         if (is_null($this->removeButton)) {
             $this->removeButton = ActionButton::make('')
                 ->icon('trash')
-                ->style('margin-left: auto')
                 ->error();
         }
 
@@ -288,7 +289,7 @@ final class FlexibleLayouts extends Field
 
             $block->setFields($prepared);
             $prepared->prepareAttributes();
-            $prepared->prepareReindexNames($this);
+            $prepared->onlyFields()->prepareReindexNames($this);
 
             return $block->removeButton($this->getRemoveButton());
         })->filter();

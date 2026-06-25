@@ -1,4 +1,4 @@
-/* === Flexible Layouts Field === */
+/* === Flexible Layouts — MoonShine 4 design tokens === */
 
 ._fl-field {
     display: flex;
@@ -6,27 +6,15 @@
     gap: 12px;
 }
 
-/* === Blocks container === */
-
-._fl-blocks {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-._fl-block {
-    position: relative;
-}
-
-/* === Tabs === */
+/* === Tabs (segmented control) === */
 
 ._fl-tabs {
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
     padding: 4px;
-    background: rgb(241 245 249);
-    border-radius: 10px;
+    background: var(--color-base-100);
+    border-radius: var(--radius-lg);
 }
 
 ._fl-tab {
@@ -36,30 +24,29 @@
     padding: 7px 14px;
     border: none;
     background: transparent;
-    color: rgb(100 116 139);
-    font-size: .85rem;
+    font-size: .875rem;
     font-weight: 500;
-    border-radius: 7px;
+    border-radius: var(--radius-md);
     cursor: pointer;
     transition: all .15s ease;
     white-space: nowrap;
 }
 
 ._fl-tab:hover {
-    background: rgb(226 232 240);
-    color: rgb(30 41 59);
+    background: var(--color-base-200);
+    color: var(--color-base-text);
 }
 
 ._fl-tab--active {
-    background: rgb(255 255 255);
-    color: rgb(30 41 59);
+    background: var(--color-base);
+    color: var(--color-base-text);
     font-weight: 600;
     box-shadow: 0 1px 3px rgb(0 0 0 / .08);
 }
 
 ._fl-tab-grip {
     cursor: grab;
-    color: rgb(148 163 184);
+    color: var(--color-base-400);
     font-size: 1rem;
     line-height: 1;
 }
@@ -73,10 +60,47 @@
     text-overflow: ellipsis;
 }
 
+/* === Blocks container === */
+
+._fl-blocks {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* === Block card === */
+
+._fl-block {
+    background: var(--color-base);
+    border: 1px solid var(--color-base-stroke);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: relative;
+}
+
+/* === Block header (delete button row) === */
+
+._fl-block-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--color-base-stroke);
+}
+
+._fl-block-header:empty {
+    display: none;
+}
+
 /* === Add button area === */
 
 ._fl-add {
-    margin-top: 4px;
+    display: flex;
+    justify-content: center;
+    padding-top: 4px;
 }
 
 ._fl-add > .dropdown {
@@ -113,5 +137,9 @@
 
     ._fl-tab {
         flex-shrink: 0;
+    }
+
+    ._fl-block {
+        padding: 14px;
     }
 }

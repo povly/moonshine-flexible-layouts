@@ -11,6 +11,8 @@ Flexible content blocks field for MoonShine 4. Build page builder-style layouts 
 - **Limit per block type** — restrict how many instances of each block can be added
 - **Native reindex** — reuses `MoonShine.iterable.reindex()` for correct form field naming at any depth
 - **Searchable dropdown** — optional search for block type selection
+- **Layout components** — use MoonShine `Flex`, `Column`, and other layout components inside blocks for multi-column field layouts
+- **Localization** — ships with English and Russian translations, extensible to any language
 
 ## Requirements
 
@@ -104,7 +106,67 @@ You can put a `FlexibleLayouts` field inside any block. Nested layouts support t
 ```php
 ->addButton(ActionButton::make('Add')->primary())
 ->removeButton(ActionButton::make('Delete')->icon('trash')->error())
-->dropdown(Dropdown::make()->searchable()->placenent('bottom-start'))
+->dropdown(Dropdown::make()->searchable()->placement('bottom-start'))
+```
+
+### Multi-column Layouts
+
+Use MoonShine's native `Flex` and `Column` components inside blocks for side-by-side fields:
+
+```php
+->block('hero', 'Hero', [
+    Flex::make([
+        Column::make([
+            Text::make('Title', 'title'),
+        ])->columnSpan(6),
+
+        Column::make([
+            Text::make('Subtitle', 'subtitle'),
+        ])->columnSpan(6),
+    ]),
+])
+```
+
+`columnSpan(6)` = half width (out of 12-column grid). Use `columnSpan(4)` for three columns, `columnSpan(3)` for four, etc.
+
+## Configuration
+
+Publish the config file:
+
+```bash
+php artisan vendor:publish --tag=flexible-layouts-config
+```
+
+```php
+// config/flexible-layouts.php
+return [
+    'route_prefix' => 'flexible-layouts',
+    'middleware' => ['web'],
+];
+```
+
+## Translations
+
+The package ships with English and Russian translations. The UI adapts to the app locale automatically.
+
+Publish translations to customize or add new languages:
+
+```bash
+php artisan vendor:publish --tag=flexible-layouts-lang
+```
+
+This creates `lang/vendor/flexible-layouts/` with `en/` and `ru/` directories. To add a language, copy any file to a new locale folder:
+
+```bash
+# Example: add German
+cp lang/vendor/flexible-layouts/en/messages.php lang/vendor/flexible-layouts/de/messages.php
+```
+
+```php
+// lang/vendor/flexible-layouts/de/messages.php
+return [
+    'add_block' => 'Block hinzufügen',
+];
 ```
 
 ## Data Format
