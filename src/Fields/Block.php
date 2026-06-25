@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Povly\FlexibleLayouts\Fields;
 
-use Illuminate\Contracts\View\View;
 use Illuminate\Support\Traits\Conditionable;
 use MoonShine\Contracts\UI\ActionButtonContract;
 use MoonShine\Laravel\Collections\Fields;
@@ -17,8 +16,6 @@ final class Block implements BlockContract
     use Conditionable;
 
     private ?ActionButtonContract $removeButton = null;
-
-    private bool $disableSort = false;
 
     private bool $isForcePreview = false;
 
@@ -65,13 +62,6 @@ final class Block implements BlockContract
         return $this;
     }
 
-    public function disableSort(): self
-    {
-        $this->disableSort = true;
-
-        return $this;
-    }
-
     public function forcePreview(): self
     {
         $this->isForcePreview = true;
@@ -108,23 +98,6 @@ final class Block implements BlockContract
         return $this->removeButton;
     }
 
-    public function isSortDisabled(): bool
-    {
-        return $this->disableSort;
-    }
-
-    /**
-     * @throws Throwable
-     */
-    public function render(): View
-    {
-        return view('flexible-layouts::block', [
-            'block' => $this,
-            'button' => $this->getRemoveButton(),
-            'fields' => FieldsGroup::make($this->fields()),
-        ]);
-    }
-
     /**
      * @throws Throwable
      */
@@ -139,13 +112,5 @@ final class Block implements BlockContract
         $html .= (string) FieldsGroup::make($this->fields());
 
         return $html;
-    }
-
-    /**
-     * @throws Throwable
-     */
-    public function __toString(): string
-    {
-        return (string) $this->render();
     }
 }

@@ -51,17 +51,9 @@ final class BlockController extends MoonShineController
                 ->toast("Limit count {$block->limit()}", ToastType::ERROR);
         }
 
-        $mode = (string) $request->get('mode', 'accordion');
-
-        if ($mode === 'tabs') {
-            return JsonResponse::make()->merge([
-                'blockHtml' => $block->renderTabContent(),
-                'blockTitle' => $field->getBlockTitles()[$blockName] ?? $blockName,
-            ]);
-        }
-
         return JsonResponse::make()->merge([
-            'blockHtml' => (string) $block,
+            'blockHtml' => $block->renderTabContent(),
+            'blockTitle' => $field->getBlockTitles()[$blockName] ?? $blockName,
         ]);
     }
 

@@ -18,97 +18,6 @@
     position: relative;
 }
 
-/* === Accordion card === */
-
-._fl-card {
-    border: 1px solid rgb(226 232 240);
-    border-radius: 10px;
-    overflow: hidden;
-    background: rgb(255 255 255);
-    transition: box-shadow .2s ease, border-color .2s ease;
-}
-
-._fl-card:hover {
-    box-shadow: 0 4px 12px rgb(0 0 0 / .06);
-}
-
-._fl-card-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
-    background: rgb(248 250 252);
-    cursor: pointer;
-    user-select: none;
-    border-bottom: 1px solid rgb(226 232 240);
-    font-size: .9rem;
-    font-weight: 600;
-    color: rgb(30 41 59);
-    transition: background .15s ease;
-}
-
-._fl-card-header:hover {
-    background: rgb(241 245 249);
-}
-
-.fl-handle {
-    cursor: grab;
-    color: rgb(148 163 184);
-    font-size: 1.1rem;
-    line-height: 1;
-    flex-shrink: 0;
-    padding: 2px;
-}
-
-.fl-handle:active {
-    cursor: grabbing;
-}
-
-._fl-card-title {
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-._fl-card-actions {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-._fl-card-actions a,
-._fl-card-actions button {
-    display: inline-flex !important;
-    align-items: center;
-    color: rgb(239 68 68) !important;
-    opacity: .6;
-    transition: opacity .15s ease;
-    cursor: pointer;
-    background: none !important;
-    border: none !important;
-    padding: 4px !important;
-    font-size: 1.1rem;
-}
-
-._fl-card-actions a:hover,
-._fl-card-actions button:hover {
-    opacity: 1;
-}
-
-._fl-card-body {
-    padding: 16px;
-}
-
-._fl-card-body > .moonshine-field {
-    margin-bottom: 14px;
-}
-
-._fl-card-body > .moonshine-field:last-child {
-    margin-bottom: 0;
-}
-
 /* === Tabs === */
 
 ._fl-tabs {
@@ -197,15 +106,6 @@
 /* === Responsive === */
 
 @media (max-width: 768px) {
-    ._fl-card-header {
-        padding: 8px 10px;
-        font-size: .85rem;
-    }
-
-    ._fl-card-body {
-        padding: 12px;
-    }
-
     ._fl-tabs {
         overflow-x: auto;
         flex-wrap: nowrap;

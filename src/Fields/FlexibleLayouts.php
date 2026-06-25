@@ -42,8 +42,6 @@ final class FlexibleLayouts extends Field
 
     private bool $disableSort = false;
 
-    private bool $asTabs = false;
-
     private bool $isSearchable = false;
 
     private string $flPath = '';
@@ -111,23 +109,11 @@ final class FlexibleLayouts extends Field
         return $this;
     }
 
-    public function asTabs(): self
-    {
-        $this->asTabs = true;
-
-        return $this;
-    }
-
     public function searchable(Closure|bool|null $condition = null): self
     {
         $this->isSearchable = value($condition) ?? true;
 
         return $this;
-    }
-
-    public function isTabbed(): bool
-    {
-        return $this->asTabs;
     }
 
     public function isAddDisabled(): bool
@@ -276,10 +262,6 @@ final class FlexibleLayouts extends Field
             }
 
             $block = clone $block
-                ->when(
-                    $this->disableSort,
-                    fn (Block $b): Block => $b->disableSort(),
-                )
                 ->when(
                     $this->isPreviewMode(),
                     fn (Block $b): Block => $b->forcePreview(),
@@ -444,7 +426,6 @@ final class FlexibleLayouts extends Field
             'addRoute' => $this->getAddRoute(),
             'blocks' => $this->getFilledBlocks(),
             'dropdown' => $this->getDropdown(),
-            'asTabs' => $this->asTabs,
             'blockTitles' => $this->getBlockTitles(),
             'disableAdd' => $this->disableAdd,
             'disableRemove' => $this->disableRemove,
