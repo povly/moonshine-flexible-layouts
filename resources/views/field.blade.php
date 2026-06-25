@@ -21,7 +21,8 @@
     <div class="_fl-blocks">
         @foreach($blocks as $block)
             <div class="_fl-block {{ $loop->first ? '' : 'hidden' }}"
-                 data-row-key="{{ $loop->index }}">
+                 data-row-key="{{ $loop->index }}"
+                 data-correct-type="{{ $block->name() }}">
                 {!! $block->renderTabContent() !!}
             </div>
         @endforeach

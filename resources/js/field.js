@@ -20,9 +20,12 @@ document.addEventListener('alpine:init', () => {
             this.blocksContainer = this.root.querySelector(':scope > ._fl-blocks')
             this.tabBar = this.root.querySelector(':scope > ._fl-tabs')
 
-            this.resolveReindex()
+            this.restoreTypeValues()
 
             const t = this
+
+            this.assignUids()
+            this.resolveReindex()
 
             this.updateTabStyles()
 
@@ -36,8 +39,53 @@ document.addEventListener('alpine:init', () => {
             MoonShine.iterable.sortable(
                 this.tabBar, null, 'fl-tabs-' + this.column, null,
                 { handle: '._fl-tab-grip' },
-                function() { t.syncBlockOrder(); t.resolveReindex() },
+                function() {
+                    t.syncBlockOrder()
+                    t.resolveReindex()
+                },
             )
+        },
+
+        restoreTypeValues() {
+            if (!this.root) return
+            var blocks = this.root.querySelectorAll(':scope > ._fl-blocks > ._fl-block')
+            blocks.forEach(function(block) {
+                var correctType = block.getAttribute('data-correct-type')
+                if (!correctType) return
+                var typeInput = block.querySelector(':scope > ._fl-type')
+                if (!typeInput) return
+                if (typeInput.value !== correctType) {
+                    console.warn('[FL FIX] _type mismatch — fixing', {
+                        name: typeInput.getAttribute('name'),
+                        wasValue: typeInput.value,
+                        correctType: correctType,
+                    })
+                    typeInput.value = correctType
+                    typeInput.setAttribute('value', correctType)
+                }
+            })
+        },
+
+        _genUid() {
+            return 'fl-' + this.column + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 11)
+        },
+
+        assignUids() {
+            const tabs = Array.from(this.tabBar.querySelectorAll(':scope > ._fl-tab'))
+            const blocks = this._directBlocks()
+            const t = this
+
+            tabs.forEach(function(tab, i) {
+                if (!tab.dataset.flUid) {
+                    const uid = t._genUid()
+                    tab.setAttribute('data-fl-uid', uid)
+                    if (blocks[i] && !blocks[i].dataset.flUid) {
+                        blocks[i].setAttribute('data-fl-uid', uid)
+                    }
+                } else if (blocks[i] && !blocks[i].dataset.flUid) {
+                    blocks[i].setAttribute('data-fl-uid', tab.dataset.flUid)
+                }
+            })
         },
 
         get pickerCategories() {
@@ -118,10 +166,12 @@ document.addEventListener('alpine:init', () => {
                 afterResponse: function(data) {
                     const html = data.blockHtml ?? ''
                     const newIndex = t._directBlocks().length
+                    const uid = t._genUid()
 
                     const wrapper = document.createElement('div')
                     wrapper.className = '_fl-block'
                     wrapper.setAttribute('data-row-key', newIndex)
+                    wrapper.setAttribute('data-fl-uid', uid)
                     wrapper.innerHTML = html
                     t.blocksContainer.appendChild(wrapper)
 
@@ -129,6 +179,7 @@ document.addEventListener('alpine:init', () => {
                     tabBtn.type = 'button'
                     tabBtn.className = '_fl-tab'
                     tabBtn.setAttribute('data-orig-idx', newIndex)
+                    tabBtn.setAttribute('data-fl-uid', uid)
                     var title = data.blockTitle || (t.blockMeta[name] && t.blockMeta[name].title) || name
                     var iconHtml = (t.blockMeta[name] && t.blockMeta[name].icon) ? '<span class="_fl-tab-icon">' + t.blockMeta[name].icon + '</span>' : ''
                     tabBtn.innerHTML = '<span class="_fl-tab-grip">⠿</span>' + iconHtml + '<span class="_fl-tab-label">' + title + '</span>'
@@ -199,13 +250,15 @@ document.addEventListener('alpine:init', () => {
 
         syncBlockOrder() {
             const tabs = Array.from(this.tabBar.querySelectorAll(':scope > ._fl-tab'))
-            const blocks = this._directBlocks()
             const t = this
 
             tabs.forEach(function(tab) {
-                const origIdx = parseInt(tab.dataset.origIdx)
-                if (!isNaN(origIdx) && blocks[origIdx]) {
-                    t.blocksContainer.appendChild(blocks[origIdx])
+                const uid = tab.dataset.flUid
+                if (uid) {
+                    const block = t.blocksContainer.querySelector(':scope > ._fl-block[data-fl-uid="' + uid + '"]')
+                    if (block) {
+                        t.blocksContainer.appendChild(block)
+                    }
                 }
             })
         },

@@ -28,6 +28,14 @@ final class BlockController extends MoonShineController
                 ->toast('Field not found', ToastType::ERROR);
         }
 
+        // Set formName so AJAX-rendered fields get the correct x-id scope.
+        // In the normal pipeline FormBuilder::viewData() sets this, but
+        // AJAX requests bypass that pipeline — leaving formName null.
+        $resource = $request->getResource();
+        if (! is_null($resource)) {
+            $field->formName($resource->getUriKey());
+        }
+
         $blockName = (string) $request->get('name');
 
         /** @var Block|null $block */
@@ -51,8 +59,10 @@ final class BlockController extends MoonShineController
                 ->toast("Limit count {$block->limit()}", ToastType::ERROR);
         }
 
+        $renderedHtml = $block->renderTabContent();
+
         return JsonResponse::make()->merge([
-            'blockHtml' => $block->renderTabContent(),
+            'blockHtml' => $renderedHtml,
             'blockTitle' => $field->getBlockTitles()[$blockName] ?? $blockName,
         ]);
     }

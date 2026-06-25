@@ -294,7 +294,7 @@ final class FlexibleLayouts extends Field
 
         $stored = is_iterable($values) ? $values : [];
 
-        $filled = collect($stored)->map(function (array $item) use ($blocks) {
+        $filled = collect($stored)->map(function (array $item, int $idx) use ($blocks) {
             $block = $blocks->findByName($item['_type'] ?? '');
 
             if (! $block instanceof BlockContract) {
@@ -325,6 +325,15 @@ final class FlexibleLayouts extends Field
                     ->customAttributes(['class' => '_fl-type'])
                     ->setValue($block->name()),
             );
+
+            // Propagate formName to all fields (including _type and nested FL)
+            // so x-id scope is correct when rendered outside FormBuilder.
+            $formName = $this->getFormName();
+            if ($formName !== null && $formName !== '') {
+                $prepared->onlyFields()->each(
+                    fn (FieldContract $f): FieldContract => $f->formName($formName),
+                );
+            }
 
             $block->setFields($prepared);
             $prepared->prepareAttributes();
