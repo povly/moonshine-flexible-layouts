@@ -1,5 +1,8 @@
 # MoonShine Flexible Layouts
 
+![Tabs](screenshots/base.png)
+![Block picker modal](screenshots/modal.png)
+
 Flexible content blocks field for MoonShine 4. Build page builder-style layouts with unlimited nesting, drag-to-reorder, and AJAX-powered block management.
 
 ## Features
