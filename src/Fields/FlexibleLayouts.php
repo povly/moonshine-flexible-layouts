@@ -12,11 +12,9 @@ use MoonShine\AssetManager\Js;
 use MoonShine\Contracts\Core\HasComponentsContract;
 use MoonShine\Contracts\UI\ActionButtonContract;
 use MoonShine\Contracts\UI\Collection\ComponentsContract;
-use MoonShine\Contracts\UI\HasFieldsContract;
 use MoonShine\Contracts\UI\FieldContract;
+use MoonShine\Contracts\UI\HasFieldsContract;
 use MoonShine\UI\Components\ActionButton;
-use MoonShine\UI\Components\Dropdown;
-use MoonShine\UI\Components\Link;
 use MoonShine\UI\Fields\Field;
 use MoonShine\UI\Fields\Hidden;
 use Povly\FlexibleLayouts\Collections\BlockCollection;
@@ -32,8 +30,6 @@ final class FlexibleLayouts extends Field
 
     private ?ActionButtonContract $addButton = null;
 
-    private ?Dropdown $dropdown = null;
-
     private ?ActionButtonContract $removeButton = null;
 
     private bool $disableRemove = false;
@@ -42,7 +38,7 @@ final class FlexibleLayouts extends Field
 
     private bool $disableSort = false;
 
-    private bool $isSearchable = false;
+    private ?string $transKey = null;
 
     private string $flPath = '';
 
@@ -61,10 +57,20 @@ final class FlexibleLayouts extends Field
      * @param  string  $title  Human-readable label shown in UI
      * @param  iterable<array-key, FieldContract>  $fields  MoonShine fields (can include nested FlexibleLayouts)
      * @param  ?int  $limit  Max instances of this block type
+     * @param  ?string  $category  Grouping label for the block picker modal
+     * @param  ?string  $description  Short description shown in the picker
+     * @param  ?string  $icon  Icon name or emoji for the picker card
      */
-    public function block(string $name, string $title, iterable $fields, ?int $limit = null): self
-    {
-        $this->blocks[] = new Block($title, $name, $fields, $limit);
+    public function block(
+        string $name,
+        string $title,
+        iterable $fields,
+        ?int $limit = null,
+        ?string $category = null,
+        ?string $description = null,
+        ?string $icon = null,
+    ): self {
+        $this->blocks[] = new Block($title, $name, $fields, $limit, $category, $description, $icon);
 
         return $this;
     }
@@ -109,11 +115,34 @@ final class FlexibleLayouts extends Field
         return $this;
     }
 
-    public function searchable(Closure|bool|null $condition = null): self
+    /**
+     * Set a custom translation namespace for this field instance.
+     *
+     * Labels resolve in order: flexible-layouts::{transKey}.{key} → flexible-layouts::messages.{key}
+     *
+     * @param  string  $key  Translation file name (e.g. 'refs' → flexible-layouts::refs)
+     */
+    public function transKey(string $key): self
     {
-        $this->isSearchable = value($condition) ?? true;
+        $this->transKey = $key;
 
         return $this;
+    }
+
+    /**
+     * Resolve a UI label: check transKey first, fall back to default messages.
+     */
+    public function resolveLabel(string $key): string
+    {
+        if ($this->transKey !== null) {
+            $custom = __("flexible-layouts::{$this->transKey}.{$key}");
+
+            if ($custom !== "flexible-layouts::{$this->transKey}.{$key}") {
+                return $custom;
+            }
+        }
+
+        return __("flexible-layouts::messages.{$key}");
     }
 
     public function isAddDisabled(): bool
@@ -144,11 +173,47 @@ final class FlexibleLayouts extends Field
             ->toArray();
     }
 
-    public function dropdown(Dropdown $dropdown): self
+    /**
+     * @return array<string, array{title: string, category: ?string, description: ?string, icon: ?string}>
+     *                                                                                                     Block metadata for the picker modal
+     */
+    public function getBlockMeta(): array
     {
-        $this->dropdown = $dropdown;
+        return $this
+            ->blocks()
+            ->mapWithKeys(fn (BlockContract $block): array => [
+                $block->name() => [
+                    'title' => $block->title(),
+                    'category' => $block->category(),
+                    'description' => $block->description(),
+                    'icon' => $this->resolveIconSvg($block->icon()),
+                ],
+            ])
+            ->toArray();
+    }
 
-        return $this;
+    /**
+     * Resolve an icon value to renderable HTML.
+     *
+     * - MoonShine icon name (e.g. 'photo') → renders SVG from moonshine::icons.{name}
+     * - Raw HTML/SVG (starts with '<') → pass through
+     * - Emoji or short text → pass through
+     */
+    private function resolveIconSvg(?string $icon): ?string
+    {
+        if ($icon === null || $icon === '') {
+            return null;
+        }
+
+        if (str_starts_with($icon, '<')) {
+            return $icon;
+        }
+
+        if (view()->exists("moonshine::icons.{$icon}")) {
+            return (string) view("moonshine::icons.{$icon}");
+        }
+
+        return $icon;
     }
 
     public function getAddRoute(): string
@@ -167,7 +232,7 @@ final class FlexibleLayouts extends Field
 
         if (is_null($this->addButton)) {
             $this->addButton = ActionButton::make(
-                __('flexible-layouts::messages.add_block')
+                $this->resolveLabel('add_block')
             )
                 ->secondary();
         }
@@ -189,32 +254,6 @@ final class FlexibleLayouts extends Field
 
         return $this->removeButton
             ->onClick(fn (): string => 'remove', 'stop');
-    }
-
-    /**
-     * @return array<int, ActionButtonContract|Link>
-     */
-    public function getBlockButtons(): array
-    {
-        return $this
-            ->blocks()
-            ->map(
-                fn (BlockContract $block) => Link::make('#', $block->title())
-                    ->icon('plus')
-                    ->customAttributes(['@click.prevent' => "add(`{$block->name()}`);closeDropdown()"]),
-            )
-            ->toArray();
-    }
-
-    public function getDropdown(): Dropdown
-    {
-        if (is_null($this->dropdown)) {
-            $this->dropdown = Dropdown::make()->searchable($this->isSearchable);
-        }
-
-        return $this->dropdown
-            ->toggler(fn (): ?ActionButtonContract => $this->getAddButton())
-            ->items($this->getBlockButtons());
     }
 
     /**
@@ -426,8 +465,14 @@ final class FlexibleLayouts extends Field
         return [
             'addRoute' => $this->getAddRoute(),
             'blocks' => $this->getFilledBlocks(),
-            'dropdown' => $this->getDropdown(),
+            'blockMeta' => $this->getBlockMeta(),
             'blockTitles' => $this->getBlockTitles(),
+            'labels' => [
+                'add_block' => $this->resolveLabel('add_block'),
+                'search_blocks' => $this->resolveLabel('search_blocks'),
+                'no_blocks_found' => $this->resolveLabel('no_blocks_found'),
+                'all_categories' => $this->resolveLabel('all_categories'),
+            ],
             'disableAdd' => $this->disableAdd,
             'disableRemove' => $this->disableRemove,
             'disableSort' => $this->disableSort,

@@ -60,6 +60,21 @@
     text-overflow: ellipsis;
 }
 
+._fl-tab-icon {
+    display: inline-flex;
+    align-items: center;
+    color: var(--color-base-400);
+}
+
+._fl-tab-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+._fl-tab--active ._fl-tab-icon {
+    color: var(--color-primary);
+}
+
 /* === Blocks container === */
 
 ._fl-blocks {
@@ -95,7 +110,7 @@
     display: none;
 }
 
-/* === Add button area === */
+/* === Add button === */
 
 ._fl-add {
     display: flex;
@@ -103,8 +118,237 @@
     padding-top: 4px;
 }
 
-._fl-add > .dropdown {
-    display: block;
+._fl-add-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 18px;
+    border: 1px dashed var(--color-base-300);
+    background: transparent;
+    color: var(--color-base-600);
+    font-size: .875rem;
+    font-weight: 500;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all .15s ease;
+}
+
+._fl-add-btn:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: var(--color-primary-page);
+}
+
+._fl-add-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+/* === Picker overlay === */
+
+._fl-picker-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgb(0 0 0 / .4);
+    backdrop-filter: blur(4px);
+    padding: 20px;
+}
+
+/* === Picker modal card === */
+
+._fl-picker {
+    width: 100%;
+    max-width: 640px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--color-base);
+    border: 1px solid var(--color-base-stroke);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 60px rgb(0 0 0 / .25);
+    overflow: hidden;
+}
+
+/* === Picker header (search + close) === */
+
+._fl-picker-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px;
+    border-bottom: 1px solid var(--color-base-stroke);
+}
+
+._fl-picker-search {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--color-base-200);
+    border-radius: var(--radius-md);
+    background: var(--color-base-50);
+    font-size: .875rem;
+    color: var(--color-base-text);
+    outline: none;
+    transition: border-color .15s ease;
+}
+
+._fl-picker-search:focus {
+    border-color: var(--color-primary);
+}
+
+._fl-picker-search::placeholder {
+    color: var(--color-base-400);
+}
+
+._fl-picker-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: none;
+    background: var(--color-base-100);
+    color: var(--color-base-500);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all .15s ease;
+    flex-shrink: 0;
+}
+
+._fl-picker-close:hover {
+    background: var(--color-base-200);
+    color: var(--color-base-text);
+}
+
+._fl-picker-close svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* === Picker category pills === */
+
+._fl-picker-cats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--color-base-stroke);
+}
+
+._fl-picker-cat {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 12px;
+    border: 1px solid var(--color-base-200);
+    background: transparent;
+    color: var(--color-base-600);
+    font-size: .8125rem;
+    font-weight: 500;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all .15s ease;
+}
+
+._fl-picker-cat:hover {
+    border-color: var(--color-base-300);
+    background: var(--color-base-50);
+}
+
+._fl-picker-cat--active {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+    color: white;
+}
+
+/* === Picker grid === */
+
+._fl-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
+    padding: 16px;
+    overflow-y: auto;
+}
+
+/* === Picker card === */
+
+._fl-picker-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 14px;
+    border: 1px solid var(--color-base-stroke);
+    background: var(--color-base);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all .15s ease;
+    text-align: left;
+}
+
+._fl-picker-card:hover {
+    border-color: var(--color-primary);
+    background: var(--color-primary-page);
+}
+
+._fl-picker-card:active {
+    transform: scale(.97);
+}
+
+._fl-picker-card-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: var(--color-base-100);
+    color: var(--color-primary);
+    font-size: 1.125rem;
+    font-weight: 700;
+    border-radius: var(--radius-md);
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+._fl-picker-card-icon svg {
+    width: 18px;
+    height: 18px;
+    margin: 5px;
+}
+
+._fl-picker-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+._fl-picker-card-title {
+    font-size: .875rem;
+    font-weight: 600;
+    color: var(--color-base-text);
+}
+
+._fl-picker-card-desc {
+    font-size: .75rem;
+    color: var(--color-base-400);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+/* === Picker empty state === */
+
+._fl-picker-empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--color-base-400);
+    font-size: .875rem;
 }
 
 /* === Sortable ghost === */
@@ -141,5 +385,9 @@
 
     ._fl-block {
         padding: 14px;
+    }
+
+    ._fl-picker-grid {
+        grid-template-columns: 1fr;
     }
 }

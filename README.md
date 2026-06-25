@@ -4,13 +4,13 @@ Flexible content blocks field for MoonShine 4. Build page builder-style layouts 
 
 ## Features
 
-- **Tab-based UI** — blocks displayed as reorderable tabs
+- **Tab-based UI** — blocks displayed as reorderable tabs with optional icons
 - **Unlimited nesting** — Flexible Layouts inside block fields just work
 - **Drag to reorder** — powered by SortableJS via MoonShine's native `iterable` API
 - **AJAX add/remove** — blocks are fetched on-demand from the server, no page reload
 - **Limit per block type** — restrict how many instances of each block can be added
 - **Native reindex** — reuses `MoonShine.iterable.reindex()` for correct form field naming at any depth
-- **Searchable dropdown** — optional search for block type selection
+- **Block picker modal** — Gutenberg-style modal with search and category grouping
 - **Layout components** — use MoonShine `Flex`, `Column`, and other layout components inside blocks for multi-column field layouts
 - **Localization** — ships with English and Russian translations, extensible to any language
 
@@ -54,7 +54,19 @@ FlexibleLayouts::make('Content', 'content')
 
 ### Block Registration
 
-Each block has a machine name, a human title, and a list of MoonShine fields:
+The `block()` method accepts:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `$name` | `string` | Snake_case key stored in JSON as `_type` |
+| `$title` | `string` | Human-readable label shown in tabs and picker |
+| `$fields` | `iterable` | MoonShine fields (can include nested FlexibleLayouts) |
+| `$limit` | `?int` | Max instances of this block type (default: unlimited) |
+| `$category` | `?string` | Grouping label in the picker modal |
+| `$description` | `?string` | Short description shown in the picker card |
+| `$icon` | `?string` | MoonShine icon name, emoji, or SVG string |
+
+Basic usage:
 
 ```php
 ->block('cta', 'Call to Action', [
@@ -63,7 +75,55 @@ Each block has a machine name, a human title, and a list of MoonShine fields:
 ], limit: 1)
 ```
 
-The `name` is stored in JSON as `_type`. The `limit` parameter restricts how many instances of this block can be added.
+With category, description, and icon (use named args):
+
+```php
+// MoonShine icon names (301+ Heroicons built-in)
+->block('hero', 'Hero', [
+    Text::make('Title', 'title'),
+    Image::make('Background', 'image'),
+], category: 'Header', description: 'Large banner with background', icon: 'photo')
+
+->block('gallery', 'Gallery', [
+    Json::make('Images', 'images'),
+], category: 'Media', description: 'Image grid gallery', icon: 'rectangle-stack')
+
+->block('wysiwyg', 'Text Editor', [
+    Textarea::make('Body', 'body'),
+], category: 'Content', description: 'Rich text content', icon: 'document-text')
+
+// Emoji also works
+->block('cta', 'Call to Action', [
+    Text::make('Text', 'label'),
+    Text::make('Link', 'url'),
+], limit: 1, icon: '🔗')
+```
+
+#### Icons
+
+The `icon` parameter accepts three types:
+
+| Type | Example | Renders as |
+|------|---------|------------|
+| MoonShine icon name | `'photo'` | SVG from `moonshine::icons.photo` |
+| Emoji | `'📷'` | Raw text |
+| Raw SVG | `'<svg>...</svg>'` | Pass-through HTML |
+
+MoonShine includes **301 Heroicons** (stroke-based, 24×24). Browse them in `vendor/moonshine/moonshine/src/UI/resources/views/icons/`. Common examples: `users`, `photo`, `document-text`, `rectangle-stack`, `bars-3`, `cog-6-tooth`, `star`, `bolt`, `globe-alt`, `bookmark`.
+
+Icons appear in both the tab label and the picker card.
+
+Blocks without a category are shown in an ungrouped section. When all blocks lack categories, the category pills row is hidden automatically.
+
+### Block Picker Modal
+
+Clicking **Add block** opens a Gutenberg-style modal with:
+
+- **Search** — type to filter by title, description, or block name
+- **Category tabs** — click to filter by category (only shown when 2+ categories exist)
+- **Grid of cards** — icon + title + description per block; click to add
+
+Press `Esc` or click outside the modal to close.
 
 ### Nested Flexible Layouts
 
@@ -95,19 +155,46 @@ You can put a `FlexibleLayouts` field inside any block. Nested layouts support t
 ->disableSort()    // disable drag-to-reorder
 ```
 
-### Searchable Block Dropdown
-
-```php
-->searchable()     // adds search input to the block type dropdown
-```
-
 ### Custom Buttons
 
 ```php
 ->addButton(ActionButton::make('Add')->primary())
 ->removeButton(ActionButton::make('Delete')->icon('trash')->error())
-->dropdown(Dropdown::make()->searchable()->placement('bottom-start'))
 ```
+
+### Custom Labels per Field
+
+By default, all Flexible Layouts fields share the same UI labels from `messages.php`. Use `->transKey()` to give a specific field its own set of labels — useful for nested layouts with different content types:
+
+```php
+// Top-level — default labels ("Add block", "Search blocks...")
+FlexibleLayouts::make('Blocks', 'blocks')
+    ->block('hero', 'Hero', [...])
+
+// Nested — custom labels via separate translation file
+->block('section', 'Section', [
+    Text::make('Title', 'title'),
+
+    FlexibleLayouts::make('Refs', 'refs')
+        ->transKey('refs')   // uses flexible-layouts::refs.* translations
+        ->block('reference', 'Справочник', [
+            Text::make('Title', 'title'),
+        ]),
+])
+```
+
+Create `lang/vendor/flexible-layouts/ru/refs.php`:
+
+```php
+return [
+    'add_block'       => 'Добавить справочник',
+    'search_blocks'   => 'Поиск справочников...',
+    'no_blocks_found' => 'Справочники не найдены',
+    'all_categories'  => 'Все',
+];
+```
+
+Labels resolve in order: `flexible-layouts::refs.{key}` -> if missing -> `flexible-layouts::messages.{key}`. An example file ships in `lang/en/refs.php` and `lang/ru/refs.php`.
 
 ### Multi-column Layouts
 
@@ -149,6 +236,15 @@ return [
 
 The package ships with English and Russian translations. The UI adapts to the app locale automatically.
 
+Available keys:
+
+| Key | EN | RU |
+|-----|----|----|
+| `add_block` | Add block | Добавить блок |
+| `search_blocks` | Search blocks... | Поиск блоков... |
+| `no_blocks_found` | No blocks found | Блоки не найдены |
+| `all_categories` | All | Все |
+
 Publish translations to customize or add new languages:
 
 ```bash
@@ -166,6 +262,9 @@ cp lang/vendor/flexible-layouts/en/messages.php lang/vendor/flexible-layouts/de/
 // lang/vendor/flexible-layouts/de/messages.php
 return [
     'add_block' => 'Block hinzufügen',
+    'search_blocks' => 'Blöcke suchen...',
+    'no_blocks_found' => 'Keine Blöcke gefunden',
+    'all_categories' => 'Alle',
 ];
 ```
 
@@ -213,13 +312,13 @@ Or use `$casts` property if preferred.
 
 ```bash
 # Install JS dependencies
-npm install
+bun install
 
 # Build assets
-npm run build
+bun run build
 
 # Watch mode
-npm run dev
+bun run dev
 ```
 
 Assets are built to `dist/` and published to `public/vendor/flexible-layouts/`.

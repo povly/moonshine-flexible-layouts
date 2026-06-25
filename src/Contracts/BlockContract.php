@@ -14,6 +14,12 @@ interface BlockContract
 
     public function name(): string;
 
+    public function category(): ?string;
+
+    public function description(): ?string;
+
+    public function icon(): ?string;
+
     public function hasLimit(): bool;
 
     public function limit(): ?int;

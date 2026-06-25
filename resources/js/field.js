@@ -1,15 +1,19 @@
 import '../css/field.css'
 
 document.addEventListener('alpine:init', () => {
-    Alpine.data('flexibleLayouts', (url, column, blockTitles = {}, flPath = '') => ({
+    Alpine.data('flexibleLayouts', (url, column, blockMeta = {}, flPath = '') => ({
         url: url,
         column: column,
-        blockTitles: blockTitles,
+        blockMeta: blockMeta,
         flPath: flPath || column,
         root: null,
         blocksContainer: null,
         tabBar: null,
         activeTab: 0,
+
+        pickerOpen: false,
+        pickerSearch: '',
+        pickerCategory: null,
 
         init() {
             this.root = this.$el
@@ -34,6 +38,45 @@ document.addEventListener('alpine:init', () => {
                 { handle: '._fl-tab-grip' },
                 function() { t.syncBlockOrder(); t.resolveReindex() },
             )
+        },
+
+        get pickerCategories() {
+            var cats = new Set()
+            for (var name in this.blockMeta) {
+                if (this.blockMeta[name].category) {
+                    cats.add(this.blockMeta[name].category)
+                }
+            }
+            return Array.from(cats).sort()
+        },
+
+        get pickerFiltered() {
+            var search = this.pickerSearch.toLowerCase().trim()
+            var result = {}
+            for (var name in this.blockMeta) {
+                var meta = this.blockMeta[name]
+                if (this.pickerCategory !== null && meta.category !== this.pickerCategory) continue
+                if (search) {
+                    var haystack = (meta.title + ' ' + name + ' ' + (meta.description || '')).toLowerCase()
+                    if (!haystack.includes(search)) continue
+                }
+                result[name] = meta
+            }
+            return result
+        },
+
+        openPicker() {
+            this.pickerOpen = true
+            this.pickerSearch = ''
+            this.pickerCategory = null
+            var t = this
+            this.$nextTick(function() {
+                t.$refs.searchInput && t.$refs.searchInput.focus()
+            })
+        },
+
+        closePicker() {
+            this.pickerOpen = false
         },
 
         resolveReindex() {
@@ -86,7 +129,9 @@ document.addEventListener('alpine:init', () => {
                     tabBtn.type = 'button'
                     tabBtn.className = '_fl-tab'
                     tabBtn.setAttribute('data-orig-idx', newIndex)
-                    tabBtn.innerHTML = '<span class="_fl-tab-grip">⠿</span><span class="_fl-tab-label">' + (data.blockTitle || t.blockTitles[name] || name) + '</span>'
+                    var title = data.blockTitle || (t.blockMeta[name] && t.blockMeta[name].title) || name
+                    var iconHtml = (t.blockMeta[name] && t.blockMeta[name].icon) ? '<span class="_fl-tab-icon">' + t.blockMeta[name].icon + '</span>' : ''
+                    tabBtn.innerHTML = '<span class="_fl-tab-grip">⠿</span>' + iconHtml + '<span class="_fl-tab-label">' + title + '</span>'
                     t.tabBar.appendChild(tabBtn)
 
                     t.switchTab(newIndex)

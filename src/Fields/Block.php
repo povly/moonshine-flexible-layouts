@@ -6,10 +6,11 @@ namespace Povly\FlexibleLayouts\Fields;
 
 use Illuminate\Support\Traits\Conditionable;
 use MoonShine\Contracts\UI\ActionButtonContract;
+use MoonShine\Contracts\UI\FieldContract;
 use MoonShine\Laravel\Collections\Fields;
 use MoonShine\UI\Components\FieldsGroup;
-use Throwable;
 use Povly\FlexibleLayouts\Contracts\BlockContract;
+use Throwable;
 
 final class Block implements BlockContract
 {
@@ -20,13 +21,16 @@ final class Block implements BlockContract
     private bool $isForcePreview = false;
 
     /**
-     * @param  iterable<array-key, \MoonShine\Contracts\UI\FieldContract>  $fields
+     * @param  iterable<array-key, FieldContract>  $fields
      */
     public function __construct(
         private string $title,
         private string $name,
         private iterable $fields,
         private ?int $limit = null,
+        private ?string $category = null,
+        private ?string $description = null,
+        private ?string $icon = null,
     ) {}
 
     public function title(): string
@@ -42,6 +46,21 @@ final class Block implements BlockContract
             ->value();
     }
 
+    public function category(): ?string
+    {
+        return $this->category;
+    }
+
+    public function description(): ?string
+    {
+        return $this->description;
+    }
+
+    public function icon(): ?string
+    {
+        return $this->icon;
+    }
+
     public function hasLimit(): bool
     {
         return ! is_null($this->limit);
@@ -53,7 +72,7 @@ final class Block implements BlockContract
     }
 
     /**
-     * @param  iterable<array-key, \MoonShine\Contracts\UI\FieldContract>  $fields
+     * @param  iterable<array-key, FieldContract>  $fields
      */
     public function setFields(iterable $fields): self
     {
@@ -80,7 +99,7 @@ final class Block implements BlockContract
 
         if ($this->isForcePreview) {
             $this->fields->onlyFields()
-                ->map(fn (\MoonShine\Contracts\UI\FieldContract $f): \MoonShine\Contracts\UI\FieldContract => $f->previewMode());
+                ->map(fn (FieldContract $f): FieldContract => $f->previewMode());
         }
 
         return $this->fields;
