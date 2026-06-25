@@ -10,10 +10,10 @@ use Povly\FlexibleLayouts\Contracts\BlockContract;
 /**
  * @extends Collection<int, BlockContract>
  */
-final class BlockCollection extends Collection
+class BlockCollection extends Collection
 {
-    public function findByName(string $name, ?BlockContract $default = null): ?BlockContract
+    public function findByName(string $name): ?BlockContract
     {
-        return $this->first(fn (BlockContract $block): bool => $block->name() === $name, $default);
+        return $this->first(fn (BlockContract $block): bool => $block->name() === $name);
     }
 }

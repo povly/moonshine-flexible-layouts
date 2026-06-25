@@ -7,11 +7,13 @@ namespace Povly\FlexibleLayouts\Fields;
 use Closure;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
+use MoonShine\AssetManager\Css;
 use MoonShine\AssetManager\Js;
 use MoonShine\Contracts\Core\HasComponentsContract;
 use MoonShine\Contracts\UI\ActionButtonContract;
 use MoonShine\Contracts\UI\Collection\ComponentsContract;
 use MoonShine\Contracts\UI\HasFieldsContract;
+use MoonShine\Contracts\UI\FieldContract;
 use MoonShine\UI\Components\ActionButton;
 use MoonShine\UI\Components\Dropdown;
 use MoonShine\UI\Components\Link;
@@ -44,10 +46,13 @@ final class FlexibleLayouts extends Field
 
     private bool $isSearchable = false;
 
+    private string $flPath = '';
+
     protected function assets(): array
     {
         return [
-            Js::make('/vendor/flexible-layouts/js/field.js'),
+            Js::make('/vendor/flexible-layouts/field.js'),
+            Css::make('/vendor/flexible-layouts/field.css'),
         ];
     }
 
@@ -56,7 +61,7 @@ final class FlexibleLayouts extends Field
      *
      * @param  string  $name  Snake_case key stored in JSON as `_type`
      * @param  string  $title  Human-readable label shown in UI
-     * @param  iterable<array-key, Field>  $fields  MoonShine fields (can include nested FlexibleLayouts)
+     * @param  iterable<array-key, FieldContract>  $fields  MoonShine fields (can include nested FlexibleLayouts)
      * @param  ?int  $limit  Max instances of this block type
      */
     public function block(string $name, string $title, iterable $fields, ?int $limit = null): self
@@ -106,11 +111,6 @@ final class FlexibleLayouts extends Field
         return $this;
     }
 
-    /**
-     * Render blocks as tabs instead of collapsible accordions.
-     * Tab bar shows block titles, content area shows active block's fields.
-     * Delete and add buttons are below the content area.
-     */
     public function asTabs(): self
     {
         $this->asTabs = true;
@@ -118,9 +118,6 @@ final class FlexibleLayouts extends Field
         return $this;
     }
 
-    /**
-     * Enable search in the block type dropdown.
-     */
     public function searchable(Closure|bool|null $condition = null): self
     {
         $this->isSearchable = value($condition) ?? true;
@@ -131,6 +128,23 @@ final class FlexibleLayouts extends Field
     public function isTabbed(): bool
     {
         return $this->asTabs;
+    }
+
+    public function isAddDisabled(): bool
+    {
+        return $this->disableAdd;
+    }
+
+    public function setFlPath(string $path): self
+    {
+        $this->flPath = $path;
+
+        return $this;
+    }
+
+    public function getFlPath(): string
+    {
+        return $this->flPath !== '' ? $this->flPath : $this->getColumn();
     }
 
     /**
@@ -276,16 +290,23 @@ final class FlexibleLayouts extends Field
                 $item,
             );
 
-            $block
-                ->setFields($fields)
-                ->fields()
-                ->prepend(
-                    Hidden::make('_type')
-                        ->customAttributes(['class' => '_type-value'])
-                        ->setValue($block->name()),
-                )
-                ->prepareAttributes()
-                ->prepareReindexNames($this);
+            foreach ($fields as $field) {
+                if ($field instanceof FlexibleLayouts) {
+                    $field->setFlPath($this->getFlPath().'.'.$block->name().'.'.$field->getColumn());
+                }
+            }
+
+            $block->setFields($fields);
+
+            $prepared = $block->fields()->prepend(
+                Hidden::make('_type')
+                    ->customAttributes(['class' => '_fl-type'])
+                    ->setValue($block->name()),
+            );
+
+            $block->setFields($prepared);
+            $prepared->prepareAttributes();
+            $prepared->prepareReindexNames($this);
 
             return $block->removeButton($this->getRemoveButton());
         })->filter();
@@ -305,7 +326,7 @@ final class FlexibleLayouts extends Field
 
     protected function resolveOnApply(): ?Closure
     {
-        return function ($item) {
+        return function (mixed $item): mixed {
             $requestValues = array_filter($this->getRequestValue() ?: []);
 
             $data = collect($requestValues)->map(function (array $value, $index): array {
@@ -326,8 +347,6 @@ final class FlexibleLayouts extends Field
                             $this->getRequestKeyPrefix(),
                         );
 
-                        // If $field is itself a FlexibleLayouts, its apply() calls
-                        // its own resolveOnApply() → recursion is FREE through delegation
                         $apply = $field->apply(
                             fn ($data): mixed => data_set($data, $field->getColumn(), $value[$field->getColumn()] ?? ''),
                             $value,
@@ -344,15 +363,13 @@ final class FlexibleLayouts extends Field
                 return array_merge(['_type' => $block->name()], $applyValues);
             })->filter();
 
-            data_set($item, $this->getColumn(), $data->values());
+            data_set($item, $this->getColumn(), $data->values()->toArray());
 
             return $item;
         };
     }
 
     /**
-     * Iterate through each submitted row and call beforeApply on child fields.
-     *
      * @throws Throwable
      */
     protected function resolveBeforeApply(mixed $data): mixed
@@ -363,8 +380,6 @@ final class FlexibleLayouts extends Field
     }
 
     /**
-     * Iterate through each submitted row and call afterApply on child fields.
-     *
      * @throws Throwable
      */
     protected function resolveAfterApply(mixed $data): mixed
@@ -375,8 +390,6 @@ final class FlexibleLayouts extends Field
     }
 
     /**
-     * Iterate through each stored row and call afterDestroy on child fields.
-     *
      * @throws Throwable
      */
     protected function resolveAfterDestroy(mixed $data): mixed
@@ -433,6 +446,11 @@ final class FlexibleLayouts extends Field
             'dropdown' => $this->getDropdown(),
             'asTabs' => $this->asTabs,
             'blockTitles' => $this->getBlockTitles(),
+            'disableAdd' => $this->disableAdd,
+            'disableRemove' => $this->disableRemove,
+            'disableSort' => $this->disableSort,
+            'flPath' => $this->getFlPath(),
+            'column' => $this->getColumn(),
         ];
     }
 }

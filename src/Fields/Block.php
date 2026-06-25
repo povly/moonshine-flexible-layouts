@@ -9,14 +9,8 @@ use Illuminate\Support\Traits\Conditionable;
 use MoonShine\Contracts\UI\ActionButtonContract;
 use MoonShine\Laravel\Collections\Fields;
 use MoonShine\UI\Components\FieldsGroup;
-use MoonShine\UI\Components\FlexibleRender;
-use MoonShine\UI\Components\Icon;
-use MoonShine\UI\Components\Layout\Flex;
-use MoonShine\UI\Fields\Field;
-use MoonShine\UI\Fields\Position;
-use MoonShine\UI\Fields\Preview;
-use Povly\FlexibleLayouts\Contracts\BlockContract;
 use Throwable;
+use Povly\FlexibleLayouts\Contracts\BlockContract;
 
 final class Block implements BlockContract
 {
@@ -29,7 +23,7 @@ final class Block implements BlockContract
     private bool $isForcePreview = false;
 
     /**
-     * @param  iterable<array-key, Field>  $fields
+     * @param  iterable<array-key, \MoonShine\Contracts\UI\FieldContract>  $fields
      */
     public function __construct(
         private string $title,
@@ -62,7 +56,7 @@ final class Block implements BlockContract
     }
 
     /**
-     * @param  iterable<array-key, Field>  $fields
+     * @param  iterable<array-key, \MoonShine\Contracts\UI\FieldContract>  $fields
      */
     public function setFields(iterable $fields): self
     {
@@ -96,7 +90,7 @@ final class Block implements BlockContract
 
         if ($this->isForcePreview) {
             $this->fields->onlyFields()
-                ->map(fn (Field $f): Field => $f->previewMode());
+                ->map(fn (\MoonShine\Contracts\UI\FieldContract $f): \MoonShine\Contracts\UI\FieldContract => $f->previewMode());
         }
 
         return $this->fields;
@@ -114,29 +108,9 @@ final class Block implements BlockContract
         return $this->removeButton;
     }
 
-    /**
-     * @throws Throwable
-     */
-    public function headingFields(): Fields
+    public function isSortDisabled(): bool
     {
-        return Fields::make([
-            Flex::make(array_filter([
-                $this->disableSort ? null : Preview::make(
-                    formatted: static fn () => Icon::make('bars-4')
-                )
-                    ->withoutWrapper()
-                    ->customAttributes(['class' => 'handle', 'style' => 'cursor: move']),
-
-                Position::make()
-                    ->withoutWrapper()
-                    ->iterableAttributes(),
-
-                FlexibleRender::make($this->title()),
-            ]))
-                ->customAttributes(['class' => 'w-full'])
-                ->itemsAlign('center')
-                ->justifyAlign('start'),
-        ]);
+        return $this->disableSort;
     }
 
     /**
@@ -145,28 +119,26 @@ final class Block implements BlockContract
     public function render(): View
     {
         return view('flexible-layouts::block', [
-            'heading' => FieldsGroup::make($this->headingFields()),
+            'block' => $this,
             'button' => $this->getRemoveButton(),
             'fields' => FieldsGroup::make($this->fields()),
         ]);
     }
 
     /**
-     * Render only the fields content without Collapse wrapper (for tab mode).
-     *
      * @throws Throwable
      */
-    public function renderContent(): string
+    public function renderTabContent(): string
     {
-        return (string) FieldsGroup::make($this->fields());
-    }
+        $html = '';
 
-    /**
-     * @throws Throwable
-     */
-    public function toHtml(): string
-    {
-        return (string) $this->render();
+        if ($button = $this->getRemoveButton()) {
+            $html .= '<div class="flex justify-end mb-2">'.(string) $button.'</div>';
+        }
+
+        $html .= (string) FieldsGroup::make($this->fields());
+
+        return $html;
     }
 
     /**

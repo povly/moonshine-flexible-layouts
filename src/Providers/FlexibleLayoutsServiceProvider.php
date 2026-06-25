@@ -14,7 +14,7 @@ final class FlexibleLayoutsServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../../routes/moonshine.php');
 
         $this->publishes([
-            __DIR__.'/../../public' => public_path('vendor/flexible-layouts'),
+            __DIR__.'/../../dist' => public_path('vendor/flexible-layouts'),
         ], ['flexible-layouts', 'laravel-assets']);
     }
 }

@@ -17,8 +17,6 @@ use Throwable;
 final class BlockController extends MoonShineController
 {
     /**
-     * Handle AJAX "add block" request.
-     *
      * @throws Throwable
      */
     public function store(CrudRequestContract $request): JsonResponse
@@ -53,11 +51,23 @@ final class BlockController extends MoonShineController
                 ->toast("Limit count {$block->limit()}", ToastType::ERROR);
         }
 
-        return JsonResponse::make()->html((string) $block);
+        $mode = (string) $request->get('mode', 'accordion');
+
+        if ($mode === 'tabs') {
+            return JsonResponse::make()->merge([
+                'blockHtml' => $block->renderTabContent(),
+                'blockTitle' => $field->getBlockTitles()[$blockName] ?? $blockName,
+            ]);
+        }
+
+        return JsonResponse::make()->merge([
+            'blockHtml' => (string) $block,
+        ]);
     }
 
     /**
      * Find the FlexibleLayouts field on the current page/resource.
+     * Supports nested fields via dot-path (e.g. "blocks.page-top.content").
      *
      * @throws Throwable
      */
@@ -76,8 +86,72 @@ final class BlockController extends MoonShineController
             };
         }
 
-        return $fields
-            ->onlyFields()
-            ->findByColumn($request->get('field'));
+        $path = (string) $request->get('path', $request->get('field'));
+        $segments = explode('.', $path);
+
+        $topColumn = array_shift($segments);
+        $field = $fields->onlyFields()->findByColumn($topColumn);
+
+        if (! $field instanceof FlexibleLayouts) {
+            return null;
+        }
+
+        if (empty($segments)) {
+            return $field;
+        }
+
+        $current = $field;
+
+        while (! empty($segments)) {
+            $blockName = array_shift($segments);
+            $fieldColumn = array_shift($segments);
+
+            if ($fieldColumn === null) {
+                break;
+            }
+
+            $block = $current->blocks()->findByName($blockName);
+
+            if (! $block) {
+                return null;
+            }
+
+            $current = $block->fields()->onlyFields()->findByColumn($fieldColumn);
+
+            if (! $current instanceof FlexibleLayouts) {
+                return null;
+            }
+        }
+
+        $current->setNameAttribute($this->buildNameFromPath($path));
+        $current->setFlPath($path);
+
+        return $current;
+    }
+
+    /**
+     * Build the name attribute template from a dot-separated path.
+     *
+     * Examples:
+     *   "blocks"                    → "blocks"
+     *   "blocks.page-top.content"   → "blocks[${index0}][content]"
+     */
+    private function buildNameFromPath(string $path): string
+    {
+        $segments = explode('.', $path);
+
+        if (count($segments) <= 1) {
+            return $segments[0];
+        }
+
+        $name = $segments[0];
+        $level = 0;
+
+        for ($i = 2; $i < count($segments); $i += 2) {
+            $name .= '[${index'.$level.'}]['.$segments[$i].']';
+            $level++;
+        }
+
+        return $name;
     }
 }

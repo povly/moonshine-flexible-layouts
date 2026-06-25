@@ -1,6 +1,6 @@
 {
     "name": "povly/moonshine-flexible-layouts",
-    "description": "Flexible layouts field with nesting for MoonShine",
+    "description": "Flexible content blocks with unlimited nesting for MoonShine",
     "type": "library",
     "license": "MIT",
     "require": {
