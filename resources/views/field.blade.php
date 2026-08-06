@@ -12,6 +12,11 @@
                     data-orig-idx="{{ $loop->index }}"
                     @click="switchTab({{ $loop->index }})">
                 @if(!$disableSort)<span class="_fl-tab-grip">⠿</span>@endif
+                @php
+                    // Icon is developer-controlled via Block::__construct($icon) — rendered
+                    // raw via {!! !!} because it may contain SVG markup. NEVER accept user input here.
+                    // See Block::__construct PHPDoc for the trust-boundary contract.
+                @endphp
                 @if($blockMeta[$block->name()]['icon'] ?? null)<span class="_fl-tab-icon">{!! $blockMeta[$block->name()]['icon'] !!}</span>@endif
                 <span class="_fl-tab-label">{{ $block->title() }}</span>
             </button>

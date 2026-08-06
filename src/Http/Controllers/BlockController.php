@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace Povly\FlexibleLayouts\Http\Controllers;
 
+use Illuminate\Support\Facades\Log;
 use MoonShine\Contracts\Core\DependencyInjection\CrudRequestContract;
 use MoonShine\Crud\JsonResponse;
 use MoonShine\Laravel\Collections\Fields;
 use MoonShine\Laravel\Http\Controllers\MoonShineController;
 use MoonShine\Support\Enums\PageType;
 use MoonShine\Support\Enums\ToastType;
-use Povly\FlexibleLayouts\Fields\Block;
+use Povly\FlexibleLayouts\Blocks\Block;
 use Povly\FlexibleLayouts\Fields\FlexibleLayouts;
 use Throwable;
 
@@ -50,9 +51,10 @@ final class BlockController extends MoonShineController
                 ->toast('Block not found', ToastType::ERROR);
         }
 
-        $blockCount = (int) $request
-            ->collect('counts')
-            ->get($block->name(), 0);
+        // Recount block instances from the persisted model to enforce the
+        // per-type limit authoritatively. Falls back to request-supplied
+        // counts for unsaved records (no model yet) — see resolveBlockCount().
+        $blockCount = $this->resolveBlockCount($request, $field, $block->name());
 
         if ($block->hasLimit() && $block->limit() <= $blockCount) {
             return JsonResponse::make()
@@ -65,6 +67,50 @@ final class BlockController extends MoonShineController
             'blockHtml' => $renderedHtml,
             'blockTitle' => $field->getBlockTitles()[$blockName] ?? $blockName,
         ]);
+    }
+
+    /**
+     * Resolve the current instance count for a block type.
+     *
+     * Authoritative source: the persisted model attribute.
+     * Fallback (new, unsaved records): request-supplied counts with a log warning.
+     *
+     * @return int<0, max>
+     */
+    private function resolveBlockCount(CrudRequestContract $request, FlexibleLayouts $field, string $blockName): int
+    {
+        $item = $request->getResource()?->getItem();
+
+        if (! is_null($item)) {
+            $stored = $item->{$field->getColumn()} ?? [];
+
+            if (! is_iterable($stored)) {
+                return 0;
+            }
+
+            $authoritative = 0;
+            foreach ($stored as $entry) {
+                if (is_array($entry) && ($entry['_type'] ?? null) === $blockName) {
+                    $authoritative++;
+                }
+            }
+
+            return $authoritative;
+        }
+
+        // Fallback for new records — no persisted model yet.
+        // Diagnostic log — gated by config('flexible-layouts.logging').
+        // Default: off in prod (APP_DEBUG=false), on in dev/staging.
+        if (config('flexible-layouts.logging')) {
+            Log::warning('[FlexibleLayouts] limit check used client-supplied counts (new record, no model)', [
+                'block' => $blockName,
+                'column' => $field->getColumn(),
+            ]);
+        }
+
+        return (int) $request
+            ->collect('counts')
+            ->get($blockName, 0);
     }
 
     /**

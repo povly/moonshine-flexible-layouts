@@ -106,10 +106,6 @@
     border-bottom: 1px solid var(--color-base-stroke);
 }
 
-._fl-block-header:empty {
-    display: none;
-}
-
 /* === Add button === */
 
 ._fl-add {

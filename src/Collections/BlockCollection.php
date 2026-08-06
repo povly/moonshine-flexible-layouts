@@ -10,7 +10,7 @@ use Povly\FlexibleLayouts\Contracts\BlockContract;
 /**
  * @extends Collection<int, BlockContract>
  */
-class BlockCollection extends Collection
+final class BlockCollection extends Collection
 {
     public function findByName(string $name): ?BlockContract
     {

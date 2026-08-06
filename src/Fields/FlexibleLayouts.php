@@ -7,6 +7,7 @@ namespace Povly\FlexibleLayouts\Fields;
 use Closure;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use MoonShine\AssetManager\Css;
 use MoonShine\AssetManager\Js;
 use MoonShine\Contracts\Core\HasComponentsContract;
@@ -17,6 +18,7 @@ use MoonShine\Contracts\UI\HasFieldsContract;
 use MoonShine\UI\Components\ActionButton;
 use MoonShine\UI\Fields\Field;
 use MoonShine\UI\Fields\Hidden;
+use Povly\FlexibleLayouts\Blocks\Block;
 use Povly\FlexibleLayouts\Collections\BlockCollection;
 use Povly\FlexibleLayouts\Contracts\BlockContract;
 use Throwable;
@@ -294,10 +296,26 @@ final class FlexibleLayouts extends Field
 
         $stored = is_iterable($values) ? $values : [];
 
-        $filled = collect($stored)->map(function (array $item, int $idx) use ($blocks) {
+        $filled = collect($stored)->map(function (mixed $item, int $idx) use ($blocks) {
+            if (! is_array($item)) {
+                return null;
+            }
+
             $block = $blocks->findByName($item['_type'] ?? '');
 
+            // Unknown `_type` (e.g. after a refactor that removed a block type)
+            // can't be rendered — skip it from the display layer. Log when
+            // logging is enabled so editors spot the mismatch during migrations.
+            // resolveOnApply preserves the entry in the DB; this only affects UI.
             if (! $block instanceof BlockContract) {
+                if (config('flexible-layouts.logging')) {
+                    Log::warning('[FlexibleLayouts] getFilledBlocks() skipped unknown block type', [
+                        'column' => $this->getColumn(),
+                        'index' => $idx,
+                        '_type' => $item['_type'] ?? null,
+                    ]);
+                }
+
                 return null;
             }
 
@@ -360,27 +378,59 @@ final class FlexibleLayouts extends Field
         return function (mixed $item): mixed {
             $requestValues = array_filter($this->getRequestValue() ?: []);
 
-            $data = collect($requestValues)->map(function (array $value, $index): array {
-                $block = $this->blocks()->findByName($value['_type'] ?? '');
+            // Preserve request entries whose `_type` is not registered — pass
+            // them through as opaque dicts instead of dropping. Combined with
+            // the matching getFilledBlocks log warning, this keeps unrecognised
+            // blocks round-tripping through save → load until the developer
+            // re-registers or explicitly removes them.
+            $preservedUnknown = [];
 
-                if (is_null($block)) {
+            $data = collect($requestValues)->map(function (mixed $value, $index) use (&$preservedUnknown): array {
+                if (! is_array($value)) {
                     return [];
                 }
 
-                unset($value['_type']);
+                // Pass-through applies ONLY to entries with an `_type` key.
+                // Entries without `_type` are corrupted data — drop them
+                // rather than preserving an opaque dict with no discriminator.
+                $type = $value['_type'] ?? null;
+                if (! is_string($type) || $type === '') {
+                    return [];
+                }
+
+                $block = $this->blocks()->findByName($type);
+
+                // Pass-through for unrecognised `_type`: keep the original
+                // entry intact so the next save doesn't delete it.
+                if (is_null($block)) {
+                    $preservedUnknown[] = $value;
+
+                    if (config('flexible-layouts.logging')) {
+                        Log::warning('[FlexibleLayouts] resolveOnApply() preserved unknown block type', [
+                            'column' => $this->getColumn(),
+                            'index' => $index,
+                            '_type' => $type,
+                        ]);
+                    }
+
+                    return $value;
+                }
+
+                $cleaned = $value;
+                unset($cleaned['_type']);
 
                 $applyValues = [];
 
                 $block->fields()->onlyFields()->each(
-                    function (Field $field) use ($value, $index, &$applyValues): void {
+                    function (Field $field) use ($cleaned, $index, &$applyValues): void {
                         $field->appendRequestKeyPrefix(
                             "{$this->getColumn()}.$index",
                             $this->getRequestKeyPrefix(),
                         );
 
                         $apply = $field->apply(
-                            fn ($data): mixed => data_set($data, $field->getColumn(), $value[$field->getColumn()] ?? ''),
-                            $value,
+                            fn ($data): mixed => data_set($data, $field->getColumn(), $cleaned[$field->getColumn()] ?? ''),
+                            $cleaned,
                         );
 
                         data_set(
@@ -433,6 +483,10 @@ final class FlexibleLayouts extends Field
     /**
      * Shared callback loop for before/after apply and destroy pipelines.
      *
+     * Skip callbacks for entries whose `_type` is not registered — prevents
+     * beforeApply/afterApply side-effects on unrecognised block types whose
+     * field instances don't exist.
+     *
      * @param  Closure(Field, mixed): void  $callback
      *
      * @throws Throwable
@@ -442,8 +496,15 @@ final class FlexibleLayouts extends Field
         $requestValues = array_filter($this->getRequestValue() ?: []);
 
         foreach ($requestValues as $index => $value) {
+            if (! is_array($value)) {
+                continue;
+            }
+
             $block = $this->blocks()->findByName($value['_type'] ?? '');
 
+            // Unknown `_type` entries are preserved by resolveOnApply as opaque
+            // dicts, but their nested fields' callbacks must not fire because
+            // the field instances don't exist for them.
             if (is_null($block)) {
                 continue;
             }

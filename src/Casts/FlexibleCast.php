@@ -7,11 +7,17 @@ namespace Povly\FlexibleLayouts\Casts;
 use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
-class FlexibleCast implements CastsAttributes
+final class FlexibleCast implements CastsAttributes
 {
     /**
-     * @param  Model  $model
+     * Maximum accepted JSON nesting depth. Real-world page-builder content rarely
+     * exceeds depth 5-10. Cap at 64 to prevent recursion-based DoS payloads.
+     */
+    private const JSON_DEPTH_LIMIT = 64;
+
+    /**
      * @param  string|null  $value  JSON string from the database
      * @param  array<string, mixed>  $attributes
      * @return array<int, array<string, mixed>>|null
@@ -27,23 +33,34 @@ class FlexibleCast implements CastsAttributes
         }
 
         try {
-            $decoded = json_decode($value, true, 512, JSON_THROW_ON_ERROR);
+            $decoded = json_decode($value, true, self::JSON_DEPTH_LIMIT, JSON_THROW_ON_ERROR);
 
             return is_array($decoded) ? $decoded : null;
-        } catch (\JsonException) {
+        } catch (\JsonException $e) {
+            // Decode failures always log at error level — indicates real data
+            // corruption (tampering, malformed JSON, DoS attempt via depth > 64).
+            // Not gated by config('flexible-layouts.logging') because silent
+            // corruption is worse than prod noise.
+            Log::error('[FlexibleCast] get() failed to decode JSON', [
+                'model' => $model::class,
+                'key' => $key,
+                'error' => $e->getMessage(),
+                'depth_limit' => self::JSON_DEPTH_LIMIT,
+            ]);
+
             return null;
         }
     }
 
     /**
-     * @param  Model  $model
      * @param  array<int, array<string, mixed>>|null  $value
      * @param  array<string, mixed>  $attributes
+     * @return array<string, string|null> Returns [$key => $encoded] per CastsAttributes contract.
      */
-    public function set(Model $model, string $key, mixed $value, array $attributes): ?string
+    public function set(Model $model, string $key, mixed $value, array $attributes): array
     {
         if ($value === null || $value === []) {
-            return null;
+            return [$key => null];
         }
 
         if ($value instanceof Collection) {
@@ -51,9 +68,17 @@ class FlexibleCast implements CastsAttributes
         }
 
         try {
-            return json_encode(array_values($value), JSON_THROW_ON_ERROR);
-        } catch (\JsonException) {
-            return null;
+            return [$key => json_encode(array_values($value), JSON_THROW_ON_ERROR)];
+        } catch (\JsonException $e) {
+            // Encode failures indicate a programming bug (non-encodable data
+            // assigned to the cast attribute). Always log at error level.
+            Log::error('[FlexibleCast] set() failed to encode JSON', [
+                'model' => $model::class,
+                'key' => $key,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [$key => null];
         }
     }
 }

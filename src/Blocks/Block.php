@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Povly\FlexibleLayouts\Fields;
+namespace Povly\FlexibleLayouts\Blocks;
 
 use Illuminate\Support\Traits\Conditionable;
 use MoonShine\Contracts\UI\ActionButtonContract;
@@ -12,6 +12,13 @@ use MoonShine\UI\Components\FieldsGroup;
 use Povly\FlexibleLayouts\Contracts\BlockContract;
 use Throwable;
 
+/**
+ * Domain value object representing a registered block type.
+ *
+ * Not a MoonShine Field (does not extend Field) — lives in src/Blocks/
+ * because Fields/ is reserved for Presentation-layer field types.
+ * See .ai-factory/ARCHITECTURE.md for the technical-layer contract.
+ */
 final class Block implements BlockContract
 {
     use Conditionable;
@@ -21,7 +28,17 @@ final class Block implements BlockContract
     private bool $isForcePreview = false;
 
     /**
-     * @param  iterable<array-key, FieldContract>  $fields
+     * @param  string  $title  Human-readable label shown in UI tabs and picker.
+     * @param  string  $name  Snake_case key stored in JSON as `_type`. Normalised via str()->squish()->snake().
+     * @param  iterable<array-key, FieldContract>  $fields  MoonShine fields (can include nested FlexibleLayouts).
+     * @param  int|null  $limit  Max instances of this block type (null = unlimited).
+     * @param  string|null  $category  Picker-modal grouping label.
+     * @param  string|null  $description  Short description shown in picker card.
+     * @param  string|null  $icon  TRUSTED developer-supplied icon spec — MoonShine icon name
+     *                             (e.g. 'photo'), emoji (e.g. '📷'), or raw SVG markup (e.g. '<svg>...</svg>').
+     *                             Rendered via Blade `{!! !!}` and Alpine `x-html` — NEVER pass user-controlled
+     *                             data here (would be XSS). If block types ever become DB-driven, sanitise via
+     *                             DOMPurify or `Element::setHTML()` before assignment.
      */
     public function __construct(
         private string $title,
@@ -98,8 +115,10 @@ final class Block implements BlockContract
         }
 
         if ($this->isForcePreview) {
+            // Use `->each()` for iteration — `->map()` would discard the
+            // return value. previewMode() mutates the field in place.
             $this->fields->onlyFields()
-                ->map(fn (FieldContract $f): FieldContract => $f->previewMode());
+                ->each(fn (FieldContract $f): FieldContract => $f->previewMode());
         }
 
         return $this->fields;

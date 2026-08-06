@@ -15,6 +15,11 @@ document.addEventListener('alpine:init', () => {
         pickerSearch: '',
         pickerCategory: null,
 
+        // Operation lock — prevents double-click / drag-during-pending-AJAX from
+        // desyncing UI state. Reset in both afterResponse and errorCallback and
+        // via a 30s safety timeout (in case MoonShine.request never calls either).
+        _isMutating: false,
+
         init() {
             this.root = this.$el
             this.blocksContainer = this.root.querySelector(':scope > ._fl-blocks')
@@ -46,13 +51,23 @@ document.addEventListener('alpine:init', () => {
             )
         },
 
+        destroy() {
+            // Null references so Alpine can GC this component. SortableJS
+            // cleanup relies on DOM element removal — MoonShine admin does
+            // full page loads so this is sufficient. If MoonShine ever adopts
+            // Turbolinks-style navigation, would need Sortable.get().destroy().
+            this.root = null
+            this.blocksContainer = null
+            this.tabBar = null
+        },
+
         restoreTypeValues() {
             if (!this.root) return
-            var blocks = this.root.querySelectorAll(':scope > ._fl-blocks > ._fl-block')
+            const blocks = this.root.querySelectorAll(':scope > ._fl-blocks > ._fl-block')
             blocks.forEach(function(block) {
-                var correctType = block.getAttribute('data-correct-type')
+                const correctType = block.getAttribute('data-correct-type')
                 if (!correctType) return
-                var typeInput = block.querySelector(':scope > ._fl-type')
+                const typeInput = block.querySelector(':scope > ._fl-type')
                 if (!typeInput) return
                 if (typeInput.value !== correctType) {
                     console.warn('[FL FIX] _type mismatch — fixing', {
@@ -89,8 +104,8 @@ document.addEventListener('alpine:init', () => {
         },
 
         get pickerCategories() {
-            var cats = new Set()
-            for (var name in this.blockMeta) {
+            const cats = new Set()
+            for (const name in this.blockMeta) {
                 if (this.blockMeta[name].category) {
                     cats.add(this.blockMeta[name].category)
                 }
@@ -99,13 +114,13 @@ document.addEventListener('alpine:init', () => {
         },
 
         get pickerFiltered() {
-            var search = this.pickerSearch.toLowerCase().trim()
-            var result = {}
-            for (var name in this.blockMeta) {
-                var meta = this.blockMeta[name]
+            const search = this.pickerSearch.toLowerCase().trim()
+            const result = {}
+            for (const name in this.blockMeta) {
+                const meta = this.blockMeta[name]
                 if (this.pickerCategory !== null && meta.category !== this.pickerCategory) continue
                 if (search) {
-                    var haystack = (meta.title + ' ' + name + ' ' + (meta.description || '')).toLowerCase()
+                    const haystack = (meta.title + ' ' + name + ' ' + (meta.description || '')).toLowerCase()
                     if (!haystack.includes(search)) continue
                 }
                 result[name] = meta
@@ -117,7 +132,7 @@ document.addEventListener('alpine:init', () => {
             this.pickerOpen = true
             this.pickerSearch = ''
             this.pickerCategory = null
-            var t = this
+            const t = this
             this.$nextTick(function() {
                 t.$refs.searchInput && t.$refs.searchInput.focus()
             })
@@ -144,7 +159,27 @@ document.addEventListener('alpine:init', () => {
         },
 
         add(name) {
+            // Operation lock — rapid double-click or drag-during-pending would
+            // otherwise fire two requests and desync the UI.
+            if (this._isMutating) {
+                if (import.meta.env.DEV) {
+                    console.warn('[FlexibleLayouts] add() blocked by operation lock', { column: this.column, name })
+                }
+                return
+            }
+            this._isMutating = true
+
+            // Safety reset in case neither afterResponse nor errorCallback fires
+            // (shouldn't happen, but guarantees the lock can't get stuck forever).
             const t = this
+            const lockTimeout = setTimeout(function() {
+                if (t._isMutating) {
+                    t._isMutating = false
+                    if (import.meta.env.DEV) {
+                        console.warn('[FlexibleLayouts] operation lock reset by safety timeout', { column: t.column, name })
+                    }
+                }
+            }, 30000)
 
             const counts = {}
             t._directBlocks().forEach(function(block) {
@@ -164,6 +199,9 @@ document.addEventListener('alpine:init', () => {
                 counts: counts,
             }, {}, {
                 afterResponse: function(data) {
+                    clearTimeout(lockTimeout)
+                    t._isMutating = false
+
                     const html = data.blockHtml ?? ''
                     const newIndex = t._directBlocks().length
                     const uid = t._genUid()
@@ -172,6 +210,7 @@ document.addEventListener('alpine:init', () => {
                     wrapper.className = '_fl-block'
                     wrapper.setAttribute('data-row-key', newIndex)
                     wrapper.setAttribute('data-fl-uid', uid)
+                    wrapper.setAttribute('data-correct-type', name)
                     wrapper.innerHTML = html
                     t.blocksContainer.appendChild(wrapper)
 
@@ -180,8 +219,8 @@ document.addEventListener('alpine:init', () => {
                     tabBtn.className = '_fl-tab'
                     tabBtn.setAttribute('data-orig-idx', newIndex)
                     tabBtn.setAttribute('data-fl-uid', uid)
-                    var title = data.blockTitle || (t.blockMeta[name] && t.blockMeta[name].title) || name
-                    var iconHtml = (t.blockMeta[name] && t.blockMeta[name].icon) ? '<span class="_fl-tab-icon">' + t.blockMeta[name].icon + '</span>' : ''
+                    const title = data.blockTitle || (t.blockMeta[name] && t.blockMeta[name].title) || name
+                    const iconHtml = (t.blockMeta[name] && t.blockMeta[name].icon) ? '<span class="_fl-tab-icon">' + t.blockMeta[name].icon + '</span>' : ''
                     tabBtn.innerHTML = '<span class="_fl-tab-grip">⠿</span>' + iconHtml + '<span class="_fl-tab-label">' + title + '</span>'
                     t.tabBar.appendChild(tabBtn)
 
@@ -197,10 +236,22 @@ document.addEventListener('alpine:init', () => {
                         )
                     })
                 },
+                errorCallback: function(errorData) {
+                    clearTimeout(lockTimeout)
+                    t._isMutating = false
+                    console.error('[FlexibleLayouts] add() request failed', { column: t.column, name, error: errorData })
+                },
             })
         },
 
         remove() {
+            if (this._isMutating) {
+                if (import.meta.env.DEV) {
+                    console.warn('[FlexibleLayouts] remove() blocked by operation lock', { column: this.column })
+                }
+                return
+            }
+
             const block = this.$el.closest('._fl-block')
             if (!block) return
 
@@ -252,15 +303,18 @@ document.addEventListener('alpine:init', () => {
             const tabs = Array.from(this.tabBar.querySelectorAll(':scope > ._fl-tab'))
             const t = this
 
+            // Use DocumentFragment to batch DOM moves into a single reflow.
+            const fragment = document.createDocumentFragment()
             tabs.forEach(function(tab) {
                 const uid = tab.dataset.flUid
                 if (uid) {
                     const block = t.blocksContainer.querySelector(':scope > ._fl-block[data-fl-uid="' + uid + '"]')
                     if (block) {
-                        t.blocksContainer.appendChild(block)
+                        fragment.appendChild(block)
                     }
                 }
             })
+            t.blocksContainer.appendChild(fragment)
         },
     }))
 })
