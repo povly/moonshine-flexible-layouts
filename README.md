@@ -128,6 +128,10 @@ Clicking **Add block** opens a Gutenberg-style modal with:
 
 Press `Esc` or click outside the modal to close.
 
+#### z-index / compatibility
+
+The picker overlay lives on the MoonShine core modal layer — `z-index: var(--z-modal, 1100)`. It stays below core menus (`--z-menu: 1200`) and toasts (`--z-toast: 1300`), and packages with dedicated elevated layers (e.g. `moonshine-media-manager` dialogs at 1150/1250) always stack above it. Do not raise the overlay above the core scale — that was the original 9999 bug.
+
 ### Nested Flexible Layouts
 
 You can put a `FlexibleLayouts` field inside any block. Nested layouts support the same features (drag, add, remove, reindex):

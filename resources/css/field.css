@@ -146,7 +146,8 @@
 ._fl-picker-overlay {
     position: fixed;
     inset: 0;
-    z-index: 9999;
+    /* Core modal layer (1100): below toasts/menus, lets elevated dialogs (media-manager) stack above. */
+    z-index: var(--z-modal, 1100);
     display: flex;
     align-items: center;
     justify-content: center;
