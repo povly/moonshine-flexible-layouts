@@ -63,7 +63,7 @@ Blocks removed from code but still present in stored JSON must survive round-tri
 `Block::$icon` is DEVELOPER-supplied (icon name, emoji, or raw SVG) rendered raw via Blade `{!! !!}` and Alpine `x-html`. NEVER pass user-controlled data to `icon:`. If block types ever become DB-driven, sanitise first (DOMPurify / `Element::setHTML()`).
 
 ### 4. Operation lock in field.js
-`_isMutating` guards `add()`/`remove()` against double-click and drag-during-pending-AJAX. Reset happens in `afterResponse`, `errorCallback`, AND a 30 s safety timeout. Any new mutating action must respect the lock.
+`_isMutating` guards `add()`/`remove()`/`duplicate()` against double-click and drag-during-pending-AJAX. Reset happens in `afterResponse`, `errorCallback`, AND a 30 s safety timeout. Any new mutating action must respect the lock.
 
 ### 5. reindex / flPath contract
 - `MoonShine.iterable.reindex()` + `data-row-key` attributes keep form field names correct at any nesting depth — always reindex after DOM insert/remove/reorder.
@@ -97,9 +97,10 @@ Picker overlay sits on the MoonShine core modal layer `var(--z-modal, 1100)`. Do
 
 ## Verification
 
-No automated test suite exists. Before finishing any change:
-1. `php -l` on changed PHP files.
-2. `bun run build` must succeed with zero warnings from the IIFE plugin.
-3. Functional check in a host Laravel app: add/remove/reorder blocks, nested layouts, limit enforcement, save + reload round-trip (unknown `_type` preserved).
+Unit tests cover the domain layer (Block, BlockCollection, FlexibleCast): run `vendor/bin/phpunit` (PHPUnit + orchestra/testbench, MoonShine provider booted — see `tests/Unit/TestCase.php`). Before finishing any change:
+1. `vendor/bin/phpunit` green.
+2. `php -l` on changed PHP files.
+3. `bun run build` must succeed with zero warnings from the IIFE plugin.
+4. Functional check in a host Laravel app: add/remove/reorder/duplicate blocks, nested layouts, limit enforcement, save + reload round-trip (unknown `_type` preserved).
 
 Deep internals (data flow, method reference, `_type` matrix): [references/INTERNALS.md](references/INTERNALS.md)

@@ -21,6 +21,7 @@ Flexible content blocks field for MoonShine 4. Build page builder-style layouts 
 - **Unlimited nesting** — Flexible Layouts inside block fields just work
 - **Drag to reorder** — powered by SortableJS via MoonShine's native `iterable` API
 - **AJAX add/remove** — blocks are fetched on-demand from the server, no page reload
+- **Duplicate blocks** — one click copies a block with all field values, inserted right after the source
 - **Limit per block type** — restrict how many instances of each block can be added (enforced server-side)
 - **Native reindex** — reuses `MoonShine.iterable.reindex()` for correct form field naming at any depth
 - **Block picker modal** — Gutenberg-style modal with search and category grouping
@@ -190,6 +191,7 @@ You can put a `FlexibleLayouts` field inside any block. Nested layouts support t
 ```php
 ->disableAdd()     // hide the "Add block" button
 ->disableRemove()  // hide the remove button on blocks
+->disableDuplicate()  // hide the duplicate button on blocks
 ->disableSort()    // disable drag-to-reorder
 ```
 
@@ -198,7 +200,12 @@ You can put a `FlexibleLayouts` field inside any block. Nested layouts support t
 ```php
 ->addButton(ActionButton::make('Add')->primary())
 ->removeButton(ActionButton::make('Delete')->icon('trash')->error())
+->duplicateButton(ActionButton::make('Duplicate')->icon('square-2-stack')->secondary())
 ```
+
+#### Duplicating Blocks
+
+Every block header includes a duplicate button right after the remove button. It fetches a fresh server-rendered instance of the same block type (so field ids/names stay unique and per-type limits are enforced server-side), copies all field values from the source block, and inserts the copy directly after it. File fields cannot be copied (browser limitation) — they start empty in the duplicate. A `flexible-layouts:block-duplicated` DOM event is dispatched after each duplication.
 
 #### Custom Labels per Field
 
@@ -287,6 +294,7 @@ Available keys:
 | `search_blocks` | Search blocks... | Поиск блоков... |
 | `no_blocks_found` | No blocks found | Блоки не найдены |
 | `all_categories` | All | Все |
+| `duplicate_block` | Duplicate | Дублировать |
 
 Publish translations to customize or add new languages:
 
@@ -377,6 +385,7 @@ Assets are built to `dist/` and published to `public/vendor/flexible-layouts/`. 
 - **Неограниченная вложенность** — Flexible Layouts внутри полей блоков работает рекурсивно
 - **Drag-сортировка** — SortableJS через нативный API `iterable` ядра MoonShine
 - **AJAX add/remove** — блоки рендерятся по требованию сервером, без перезагрузки страницы
+- **Дублирование блоков** — один клик: блок копируется со всеми значениями полей и вставляется сразу после исходного
 - **Лимит на тип блока** — ограничение числа инстансов каждого типа (проверяется на сервере)
 - **Нативный reindex** — переиспользуется `MoonShine.iterable.reindex()` для корректного именования полей формы на любой глубине
 - **Модальный пикер блоков** — модал в стиле Gutenberg с поиском и группировкой по категориям
@@ -546,6 +555,7 @@ MoonShine включает **301 Heroicons** (stroke, 24×24). Список — 
 ```php
 ->disableAdd()     // скрыть кнопку «Добавить блок»
 ->disableRemove()  // скрыть кнопку удаления у блоков
+->disableDuplicate()  // скрыть кнопку дублирования у блоков
 ->disableSort()    // запретить drag-сортировку
 ```
 
@@ -554,7 +564,12 @@ MoonShine включает **301 Heroicons** (stroke, 24×24). Список — 
 ```php
 ->addButton(ActionButton::make('Добавить')->primary())
 ->removeButton(ActionButton::make('Удалить')->icon('trash')->error())
+->duplicateButton(ActionButton::make('Дублировать')->icon('square-2-stack')->secondary())
 ```
+
+#### Дублирование блоков
+
+В хедере каждого блока, сразу после кнопки удаления, есть кнопка дублирования. Она запрашивает свежий серверный рендер того же типа блока (id/name полей остаются уникальными, лимиты типов проверяются на сервере), копирует все значения полей исходного блока и вставляет копию сразу после него. Файловые поля скопировать нельзя (ограничение браузера) — в дубле они пусты. После дублирования диспатчится DOM-событие `flexible-layouts:block-duplicated`.
 
 #### Персональные подписи поля
 
@@ -643,6 +658,7 @@ return [
 | `search_blocks` | Search blocks... | Поиск блоков... |
 | `no_blocks_found` | No blocks found | Блоки не найдены |
 | `all_categories` | All | Все |
+| `duplicate_block` | Duplicate | Дублировать |
 
 Публикация переводов (для кастомизации или новых языков):
 

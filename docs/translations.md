@@ -12,6 +12,7 @@
 | `search_blocks` | Search blocks... | Поиск блоков... |
 | `no_blocks_found` | No blocks found | Блоки не найдены |
 | `all_categories` | All | Все |
+| `duplicate_block` | Duplicate | Дублировать |
 
 ## Публикация
 

@@ -13,7 +13,7 @@ Laravel-пакет, добавляющий в MoonShine 4 поле констр�
 - **Frontend:** ванильный JS (ES2017) + Alpine.js, без фреймворков
 - **Сборка:** Vite 6 + Bun (IIFE-обёртка, lightningcss)
 - **БД:** нет (JSON в атрибуте модели хост-приложения)
-- **Тесты:** отсутствуют
+- **Тесты:** PHPUnit 13 + orchestra/testbench (unit-тесты домена)
 
 ## Структура проекта
 
@@ -26,6 +26,7 @@ Laravel-пакет, добавляющий в MoonShine 4 поле констр�
 │   ├── Fields/FlexibleLayouts.php    #   Главное поле MoonShine (apply-пайплайн)
 │   ├── Http/Controllers/BlockController.php  # AJAX-рендер блока + лимиты
 │   └── Providers/FlexibleLayoutsServiceProvider.php
+├── tests/                            # Unit-тесты (PHPUnit + testbench)
 ├── resources/
 │   ├── js/field.js                   # Alpine-компонент: табы, пикер, AJAX, operation lock
 │   ├── css/field.css                 # Стили, только неймспейс _fl-*

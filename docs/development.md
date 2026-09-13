@@ -56,7 +56,11 @@ resources/
 
 ## Тесты
 
-Автотестов нет: изменения проверяются в хост-приложении (add/remove/reorder блоков, вложенность, лимиты, save/load round-trip с сохранением неизвестных `_type`).
+```bash
+vendor/bin/phpunit
+```
+
+Unit-тесты домена (Block, BlockCollection, FlexibleCast) работают на PHPUnit + orchestra/testbench с загруженным MoonShine-провайдером (`tests/Unit/TestCase.php`). JS-часть проверяется вручную в хост-приложении: add/remove/reorder/дублирование блоков, вложенность, лимиты, save/load round-trip с сохранением неизвестных `_type`.
 
 ## See Also
 
