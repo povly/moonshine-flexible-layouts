@@ -5,4 +5,5 @@ return [
     'search_blocks' => 'Поиск блоков...',
     'no_blocks_found' => 'Блоки не найдены',
     'all_categories' => 'Все',
+    'duplicate_block' => 'Дублировать',
 ];

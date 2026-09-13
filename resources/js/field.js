@@ -274,6 +274,155 @@ document.addEventListener('alpine:init', () => {
             this.resolveReindex()
         },
 
+        // Duplicate a block: fetch a fresh server-rendered instance of the
+        // same block type via store() (correct ids/names + authoritative
+        // limit check), then copy field values from the source block into
+        // the new markup. The duplicate is inserted right after the source.
+        duplicate() {
+            if (this._isMutating) {
+                if (import.meta.env.DEV) {
+                    console.warn('[FlexibleLayouts] duplicate() blocked by operation lock', { column: this.column })
+                }
+                return
+            }
+
+            const sourceBlock = this.$el.closest('._fl-block')
+            if (!sourceBlock) return
+
+            const sourceIndex = this._directBlocks().indexOf(sourceBlock)
+            if (sourceIndex === -1) return
+
+            const name = sourceBlock.getAttribute('data-correct-type')
+            if (!name) return
+
+            this._isMutating = true
+
+            const t = this
+
+            // Safety reset in case neither afterResponse nor errorCallback fires.
+            const lockTimeout = setTimeout(function() {
+                if (t._isMutating) {
+                    t._isMutating = false
+                    if (import.meta.env.DEV) {
+                        console.warn('[FlexibleLayouts] operation lock reset by safety timeout', { column: t.column, name })
+                    }
+                }
+            }, 30000)
+
+            const counts = {}
+            t._directBlocks().forEach(function(block) {
+                const types = block.querySelectorAll('._fl-type')
+                for (const input of types) {
+                    if (input.closest('[data-top-level]') === t.root) {
+                        counts[input.value] = (counts[input.value] || 0) + 1
+                        break
+                    }
+                }
+            })
+
+            MoonShine.request(t, t.url, 'post', {
+                field: t.column,
+                path: t.flPath,
+                name: name,
+                counts: counts,
+            }, {}, {
+                afterResponse: function(data) {
+                    clearTimeout(lockTimeout)
+                    t._isMutating = false
+
+                    const html = data.blockHtml ?? ''
+                    const uid = t._genUid()
+
+                    const wrapper = document.createElement('div')
+                    wrapper.className = '_fl-block'
+                    wrapper.setAttribute('data-fl-uid', uid)
+                    wrapper.setAttribute('data-correct-type', name)
+                    wrapper.innerHTML = html
+                    sourceBlock.after(wrapper)
+
+                    const sourceTab = t.tabBar.querySelectorAll(':scope > ._fl-tab')[sourceIndex]
+                    if (sourceTab) {
+                        const tabBtn = document.createElement('button')
+                        tabBtn.type = 'button'
+                        tabBtn.className = '_fl-tab'
+                        tabBtn.setAttribute('data-fl-uid', uid)
+                        const title = data.blockTitle || (t.blockMeta[name] && t.blockMeta[name].title) || name
+                        const iconHtml = (t.blockMeta[name] && t.blockMeta[name].icon) ? '<span class="_fl-tab-icon">' + t.blockMeta[name].icon + '</span>' : ''
+                        tabBtn.innerHTML = '<span class="_fl-tab-grip">⠿</span>' + iconHtml + '<span class="_fl-tab-label">' + title + '</span>'
+                        sourceTab.after(tabBtn)
+                    }
+
+                    t._copyFieldValues(sourceBlock, wrapper)
+
+                    const newIndex = t._directBlocks().indexOf(wrapper)
+                    t.switchTab(newIndex)
+                    t.resolveReindex()
+
+                    t.$nextTick(function() {
+                        document.dispatchEvent(
+                            new CustomEvent('flexible-layouts:block-duplicated', {
+                                bubbles: true,
+                                detail: { name: name, column: t.column, sourceIndex: sourceIndex },
+                            }),
+                        )
+                    })
+                },
+                errorCallback: function(errorData) {
+                    clearTimeout(lockTimeout)
+                    t._isMutating = false
+                    console.error('[FlexibleLayouts] duplicate() request failed', { column: t.column, name, error: errorData })
+                },
+            })
+        },
+
+        // Pairwise copy of form values between two same-type blocks
+        // (source -> target). Same block type renders the same field order,
+        // so DOM-order pairing is deterministic. File inputs are skipped —
+        // browsers forbid setting input[type=file] programmatically.
+        _copyFieldValues(sourceBlock, targetBlock) {
+            const selector = 'input:not([type=file]), select, textarea'
+            const from = sourceBlock.querySelectorAll(selector)
+            const to = targetBlock.querySelectorAll(selector)
+
+            if (from.length !== to.length) {
+                if (import.meta.env.DEV) {
+                    console.warn('[FlexibleLayouts] duplicate() field count mismatch — copying min pair set', {
+                        column: this.column,
+                        sourceCount: from.length,
+                        targetCount: to.length,
+                    })
+                }
+            }
+
+            const fileSkipped = sourceBlock.querySelectorAll('input[type=file]').length
+            if (fileSkipped > 0 && import.meta.env.DEV) {
+                console.warn('[FlexibleLayouts] duplicate() skipped file inputs — they cannot be copied', { column: this.column, count: fileSkipped })
+            }
+
+            const count = Math.min(from.length, to.length)
+            for (let i = 0; i < count; i++) {
+                const src = from[i]
+                const dst = to[i]
+
+                if (src.tagName === 'SELECT') {
+                    dst.value = src.value
+                    dst.dispatchEvent(new Event('change', { bubbles: true }))
+                    continue
+                }
+
+                if (src.type === 'checkbox' || src.type === 'radio') {
+                    dst.checked = src.checked
+                    dst.dispatchEvent(new Event('change', { bubbles: true }))
+                    continue
+                }
+
+                dst.value = src.value
+                if (src.type !== 'hidden') {
+                    dst.dispatchEvent(new Event('input', { bubbles: true }))
+                }
+            }
+        },
+
         _directBlocks() {
             if (!this.blocksContainer) return []
             return Array.from(this.blocksContainer.querySelectorAll(':scope > ._fl-block'))

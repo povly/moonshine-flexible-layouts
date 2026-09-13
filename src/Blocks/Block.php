@@ -25,6 +25,8 @@ final class Block implements BlockContract
 
     private ?ActionButtonContract $removeButton = null;
 
+    private ?ActionButtonContract $duplicateButton = null;
+
     private bool $isForcePreview = false;
 
     /**
@@ -136,6 +138,18 @@ final class Block implements BlockContract
         return $this->removeButton;
     }
 
+    public function duplicateButton(?ActionButtonContract $button): self
+    {
+        $this->duplicateButton = $button;
+
+        return $this;
+    }
+
+    public function getDuplicateButton(): ?ActionButtonContract
+    {
+        return $this->duplicateButton;
+    }
+
     /**
      * @throws Throwable
      */
@@ -143,8 +157,22 @@ final class Block implements BlockContract
     {
         $html = '';
 
-        if ($button = $this->getRemoveButton()) {
-            $html .= '<div class="_fl-block-header">'.(string) $button.'</div>';
+        $removeButton = $this->getRemoveButton();
+        $duplicateButton = $this->getDuplicateButton();
+
+        if ($removeButton || $duplicateButton) {
+            $header = '<div class="_fl-block-header">';
+
+            if ($removeButton) {
+                $header .= (string) $removeButton;
+            }
+
+            // Duplicate renders AFTER the remove button (UI contract).
+            if ($duplicateButton) {
+                $header .= (string) $duplicateButton;
+            }
+
+            $html .= $header.'</div>';
         }
 
         $html .= (string) FieldsGroup::make($this->fields());

@@ -33,6 +33,10 @@ interface BlockContract
 
     public function removeButton(?ActionButtonContract $button): self;
 
+    public function getDuplicateButton(): ?ActionButtonContract;
+
+    public function duplicateButton(?ActionButtonContract $button): self;
+
     /**
      * @throws Throwable
      */

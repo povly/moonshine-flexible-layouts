@@ -34,7 +34,11 @@ final class FlexibleLayouts extends Field
 
     private ?ActionButtonContract $removeButton = null;
 
+    private ?ActionButtonContract $duplicateButton = null;
+
     private bool $disableRemove = false;
+
+    private bool $disableDuplicate = false;
 
     private bool $disableAdd = false;
 
@@ -106,6 +110,20 @@ final class FlexibleLayouts extends Field
     public function disableRemove(): self
     {
         $this->disableRemove = true;
+
+        return $this;
+    }
+
+    public function duplicateButton(ActionButtonContract $button): self
+    {
+        $this->duplicateButton = $button;
+
+        return $this;
+    }
+
+    public function disableDuplicate(): self
+    {
+        $this->disableDuplicate = true;
 
         return $this;
     }
@@ -258,6 +276,23 @@ final class FlexibleLayouts extends Field
             ->onClick(fn (): string => 'remove', 'stop');
     }
 
+    public function getDuplicateButton(): ?ActionButtonContract
+    {
+        if ($this->disableDuplicate) {
+            return null;
+        }
+
+        if (is_null($this->duplicateButton)) {
+            $this->duplicateButton = ActionButton::make('')
+                ->icon('square-2-stack')
+                ->secondary()
+                ->customAttributes(['title' => $this->resolveLabel('duplicate_block')]);
+        }
+
+        return $this->duplicateButton
+            ->onClick(fn (): string => 'duplicate', 'stop');
+    }
+
     /**
      * Fill cloned fields from stored data, recursing into nested containers.
      */
@@ -357,7 +392,9 @@ final class FlexibleLayouts extends Field
             $prepared->prepareAttributes();
             $prepared->onlyFields()->prepareReindexNames($this);
 
-            return $block->removeButton($this->getRemoveButton());
+            return $block
+                ->removeButton($this->getRemoveButton())
+                ->duplicateButton($this->getDuplicateButton());
         })->filter();
 
         return BlockCollection::make($filled);
@@ -367,6 +404,7 @@ final class FlexibleLayouts extends Field
     {
         return $this
             ->disableRemove()
+            ->disableDuplicate()
             ->disableAdd()
             ->disableSort()
             ->previewMode()
