@@ -199,16 +199,7 @@ document.addEventListener('alpine:init', () => {
                     '._fl-block',
                 )
 
-                // Deep levels (`${index1}`+) are rewritten only by the
-                // outermost pass — re-run it after nested mutations, or
-                // inserted blocks keep template names and the server drops
-                // them on save.
-                let outermost = t.root
-                let ancestor = t.root.parentElement ? t.root.parentElement.closest('._fl-field') : null
-                while (ancestor) {
-                    outermost = ancestor
-                    ancestor = ancestor.parentElement ? ancestor.parentElement.closest('._fl-field') : null
-                }
+                let outermost = t._flOutermost()
 
                 if (outermost !== t.root) {
                     MoonShine.iterable.reindex(
@@ -217,6 +208,54 @@ document.addEventListener('alpine:init', () => {
                         '._fl-block',
                     )
                 }
+
+                // MoonShine Iterable is async and skips fields marked
+                // data-r-done by a concurrent pass — interleaved passes leave
+                // template names on part of the DOM. Rewrite names ourselves,
+                // deterministically, from the eternal data-name templates.
+                t._flRewriteNames(outermost, {})
+            })
+        },
+
+        _flOutermost() {
+            let outermost = this.root
+            let ancestor = this.root.parentElement ? this.root.parentElement.closest('._fl-field') : null
+            while (ancestor) {
+                outermost = ancestor
+                ancestor = ancestor.parentElement ? ancestor.parentElement.closest('._fl-field') : null
+            }
+            return outermost
+        },
+
+        _flRewriteNames(root, assignments) {
+            const t = this
+            const level = Object.keys(assignments).length
+            const placeholder = '${index' + level + '}'
+
+            root.querySelectorAll(':scope > ._fl-blocks > ._fl-block').forEach(function(block, i) {
+                const inner = Object.assign({}, assignments)
+                inner[placeholder] = String(i)
+
+                block.querySelectorAll('[data-name]').forEach(function(el) {
+                    if (el.closest('._fl-field') !== root) {
+                        return
+                    }
+
+                    let name = el.dataset.name
+                    for (const key in inner) {
+                        name = name.split(key).join(inner[key])
+                    }
+                    el.setAttribute('name', name)
+                })
+
+                block.querySelectorAll('._fl-field').forEach(function(nested) {
+                    const owner = nested.parentElement ? nested.parentElement.closest('._fl-field') : null
+                    if (owner !== root) {
+                        return
+                    }
+
+                    t._flRewriteNames(nested, inner)
+                })
             })
         },
 
