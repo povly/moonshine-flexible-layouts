@@ -190,11 +190,33 @@ document.addEventListener('alpine:init', () => {
                     block.setAttribute('data-row-key', i)
                 })
 
+                // Own-root pass stamps data-r-block on this FL root — the
+                // outermost pass recurses into deep name levels only through
+                // roots marked that way.
                 MoonShine.iterable.reindex(
                     t.root,
                     ':scope > ._fl-blocks > ._fl-block',
                     '._fl-block',
                 )
+
+                // Deep levels (`${index1}`+) are rewritten only by the
+                // outermost pass — re-run it after nested mutations, or
+                // inserted blocks keep template names and the server drops
+                // them on save.
+                let outermost = t.root
+                let ancestor = t.root.parentElement ? t.root.parentElement.closest('._fl-field') : null
+                while (ancestor) {
+                    outermost = ancestor
+                    ancestor = ancestor.parentElement ? ancestor.parentElement.closest('._fl-field') : null
+                }
+
+                if (outermost !== t.root) {
+                    MoonShine.iterable.reindex(
+                        outermost,
+                        ':scope > ._fl-blocks > ._fl-block',
+                        '._fl-block',
+                    )
+                }
             })
         },
 
