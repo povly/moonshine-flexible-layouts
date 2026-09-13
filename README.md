@@ -108,6 +108,8 @@ Basic usage:
 ], limit: 1)
 ```
 
+Registration is validated: duplicate names (compared after `squish()->snake()` normalization) and `limit < 1` throw an `InvalidArgumentException` — pass `null` for unlimited.
+
 With category, description, and icon (use named args):
 
 ```php
@@ -205,7 +207,7 @@ You can put a `FlexibleLayouts` field inside any block. Nested layouts support t
 
 #### Duplicating Blocks
 
-Every block header includes a duplicate button right after the remove button. It fetches a fresh server-rendered instance of the same block type (so field ids/names stay unique and per-type limits are enforced server-side), copies all field values from the source block, and inserts the copy directly after it. File fields cannot be copied (browser limitation) — they start empty in the duplicate. A `flexible-layouts:block-duplicated` DOM event is dispatched after each duplication.
+Every block header includes a duplicate button right after the remove button. It fetches a fresh server-rendered instance of the same block type (so field ids/names stay unique and per-type limits are enforced server-side), copies all field values from the source block, and inserts the copy directly after it. File fields cannot be copied (browser limitation) — they start empty in the duplicate. A `flexible-layouts:block-duplicated` DOM event is dispatched after each duplication. Additions and removals dispatch `flexible-layouts:block-added` and `flexible-layouts:block-removed` respectively — all events bubble on `document` with `{name, column}` in `detail`.
 
 #### Custom Labels per Field
 
@@ -277,7 +279,7 @@ return [
 ];
 ```
 
-- `route_prefix` — URL prefix of the AJAX route: `POST {prefix}/store/{pageUri}/{resourceUri?}`.
+- `route_prefix` — URL prefix of the AJAX route: `POST {prefix}/store/{pageUri}/{resourceUri?}`. The route is rate-limited with `throttle:60,1`.
 - `logging` — enables diagnostic logs (skipped/preserved unknown block types, client-supplied limit counts). JSON encode/decode errors in the cast are always logged at error level.
 
 > The package route is registered inside `Route::moonshine()` and inherits core auth/web/CSRF middleware — no `middleware` key exists or is needed.
@@ -472,6 +474,8 @@ FlexibleLayouts::make('Контент', 'content')
 ], limit: 1)
 ```
 
+Регистрация валидируется: дубликаты имён (сравнение после нормализации `squish()->snake()`) и `limit < 1` бросают `InvalidArgumentException` — для неограниченного количества передайте `null`.
+
 С категорией, описанием и иконкой (именованные аргументы):
 
 ```php
@@ -569,7 +573,7 @@ MoonShine включает **301 Heroicons** (stroke, 24×24). Список — 
 
 #### Дублирование блоков
 
-В хедере каждого блока, сразу после кнопки удаления, есть кнопка дублирования. Она запрашивает свежий серверный рендер того же типа блока (id/name полей остаются уникальными, лимиты типов проверяются на сервере), копирует все значения полей исходного блока и вставляет копию сразу после него. Файловые поля скопировать нельзя (ограничение браузера) — в дубле они пусты. После дублирования диспатчится DOM-событие `flexible-layouts:block-duplicated`.
+В хедере каждого блока, сразу после кнопки удаления, есть кнопка дублирования. Она запрашивает свежий серверный рендер того же типа блока (id/name полей остаются уникальными, лимиты типов проверяются на сервере), копирует все значения полей исходного блока и вставляет копию сразу после него. Файловые поля скопировать нельзя (ограничение браузера) — в дубле они пусты. После дублирования диспатчится DOM-событие `flexible-layouts:block-duplicated`. Добавление и удаление диспатчат `flexible-layouts:block-added` и `flexible-layouts:block-removed` соответственно — все события всплывают на `document` с `{name, column}` в `detail`.
 
 #### Персональные подписи поля
 
@@ -641,7 +645,7 @@ return [
 ];
 ```
 
-- `route_prefix` — префикс URL AJAX-роута: `POST {prefix}/store/{pageUri}/{resourceUri?}`.
+- `route_prefix` — префикс URL AJAX-роута: `POST {prefix}/store/{pageUri}/{resourceUri?}`. Роут дополнительно ограничен rate limit'ом `throttle:60,1`.
 - `logging` — включает diagnostic-логи (пропуск/сохранение неизвестных `_type`, подсчёт лимитов по клиентским данным). Ошибки кодирования/декодирования JSON в касте всегда пишутся уровнем `error`.
 
 > Роут пакета регистрируется внутри `Route::moonshine()` и наследует auth/web/CSRF middleware ядра — ключа `middleware` в конфиге нет и он не нужен.

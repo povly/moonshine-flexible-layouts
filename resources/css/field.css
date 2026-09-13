@@ -348,6 +348,13 @@
     font-size: .875rem;
 }
 
+/* === Keyboard focus (a11y) === */
+
+._fl-field :is(._fl-tab, ._fl-add-btn, ._fl-picker-cat, ._fl-picker-card, ._fl-picker-close):focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
 /* === Sortable ghost (classes injected by SortableJS — scope only, do not rename) === */
 
 ._fl-field .sortable-ghost {

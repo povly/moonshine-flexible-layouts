@@ -38,7 +38,7 @@ FLEXIBLE_LAYOUTS_LOGGING=true
 
 ## Middleware
 
-Роут пакета регистрируется внутри `Route::moonshine()` и наследует auth/web/CSRF middleware ядра MoonShine. Ключ `middleware` в конфиге не предусмотрен и не нужен — он был бы проигнорирован.
+Роут пакета регистрируется внутри `Route::moonshine()` и наследует auth/web/CSRF middleware ядра MoonShine. Поверх них на роут добавлен rate limit `throttle:60,1` (60 запросов в минуту на пользователя). Ключ `middleware` в конфиге не предусмотрен и не нужен — он был бы проигнорирован.
 
 ## See Also
 

@@ -48,6 +48,8 @@ resources/
 
 Архитектурные правила — в `.ai-factory/ARCHITECTURE.md`; внутренние инварианты (`_fl-*` неймспейс, operation lock, passthrough `_type`) — в скилле `.opencode/skills/flexible-layouts-dev/`.
 
+Инвариант неймспейса в CSS: классы `.sortable-ghost/.sortable-chosen/.sortable-drag` инжектятся SortableJS и потому глобальны — селекторы скоупятся под `._fl-field` (`._fl-field .sortable-ghost`), сами классы не переименовываются.
+
 ## Отладка
 
 - **Diagnostic-логи** включаются через `FLEXIBLE_LAYOUTS_LOGGING=true` или `config('flexible-layouts.logging')` — см. [Конфигурация](configuration.md). Префиксы сообщений: `[FlexibleLayouts]`, `[FlexibleCast]`.
@@ -60,7 +62,7 @@ resources/
 vendor/bin/phpunit
 ```
 
-Unit-тесты домена (Block, BlockCollection, FlexibleCast) работают на PHPUnit + orchestra/testbench с загруженным MoonShine-провайдером (`tests/Unit/TestCase.php`). JS-часть проверяется вручную в хост-приложении: add/remove/reorder/дублирование блоков, вложенность, лимиты, save/load round-trip с сохранением неизвестных `_type`.
+Unit-тесты домена и поля (Block, BlockCollection, FlexibleCast, FlexibleLayoutsField) работают на PHPUnit + orchestra/testbench с загруженным MoonShine-провайдером (`tests/Unit/TestCase.php`). JS-часть проверяется вручную в хост-приложении: add/remove/reorder/дублирование блоков, вложенность, лимиты, save/load round-trip с сохранением неизвестных `_type`.
 
 ## See Also
 

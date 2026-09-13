@@ -14,6 +14,7 @@ document.addEventListener('alpine:init', () => {
         pickerOpen: false,
         pickerSearch: '',
         pickerCategory: null,
+        _pickerReturnFocus: null,
 
         // Operation lock — prevents double-click / drag-during-pending-AJAX from
         // desyncing UI state. Reset in both afterResponse and errorCallback and
@@ -131,10 +132,14 @@ document.addEventListener('alpine:init', () => {
         },
 
         openPicker() {
+            this._pickerReturnFocus = document.activeElement
             this.pickerOpen = true
             this.pickerSearch = ''
             this.pickerCategory = null
             const t = this
+            if (import.meta.env.DEV) {
+                console.debug('[FlexibleLayouts] picker focus trap engaged', { column: t.column })
+            }
             this.$nextTick(function() {
                 t.$refs.searchInput && t.$refs.searchInput.focus()
             })
@@ -142,6 +147,39 @@ document.addEventListener('alpine:init', () => {
 
         closePicker() {
             this.pickerOpen = false
+
+            if (this._pickerReturnFocus && this._pickerReturnFocus.isConnected) {
+                this._pickerReturnFocus.focus()
+                if (import.meta.env.DEV) {
+                    console.debug('[FlexibleLayouts] picker focus trap released', { column: this.column })
+                }
+            }
+            this._pickerReturnFocus = null
+        },
+
+        // Keep Tab cycling inside the picker dialog (aria-modal pattern).
+        trapTab(e) {
+            const picker = e.target.closest('._fl-picker')
+            if (!picker) return
+
+            const focusables = Array.from(
+                picker.querySelectorAll('button, input, select, textarea, [tabindex]:not([tabindex="-1"])')
+            ).filter(function(el) {
+                return el.offsetParent !== null
+            })
+            if (focusables.length === 0) return
+
+            const first = focusables[0]
+            const last = focusables[focusables.length - 1]
+            const active = document.activeElement
+
+            if (e.shiftKey && active === first) {
+                e.preventDefault()
+                last.focus()
+            } else if (!e.shiftKey && active === last) {
+                e.preventDefault()
+                first.focus()
+            }
         },
 
         resolveReindex() {
@@ -222,6 +260,9 @@ document.addEventListener('alpine:init', () => {
                     const tabBtn = document.createElement('button')
                     tabBtn.type = 'button'
                     tabBtn.className = '_fl-tab'
+                    tabBtn.setAttribute('role', 'tab')
+                    tabBtn.setAttribute('aria-selected', 'false')
+                    tabBtn.tabIndex = -1
                     tabBtn.setAttribute('data-orig-idx', newIndex)
                     tabBtn.setAttribute('data-fl-uid', uid)
                     const title = data.blockTitle || (t.blockMeta[name] && t.blockMeta[name].title) || name
@@ -365,6 +406,9 @@ document.addEventListener('alpine:init', () => {
                         const tabBtn = document.createElement('button')
                         tabBtn.type = 'button'
                         tabBtn.className = '_fl-tab'
+                        tabBtn.setAttribute('role', 'tab')
+                        tabBtn.setAttribute('aria-selected', 'false')
+                        tabBtn.tabIndex = -1
                         tabBtn.setAttribute('data-fl-uid', uid)
                         const title = data.blockTitle || (t.blockMeta[name] && t.blockMeta[name].title) || name
                         const iconHtml = (t.blockMeta[name] && t.blockMeta[name].icon) ? '<span class="_fl-tab-icon">' + t.blockMeta[name].icon + '</span>' : ''
@@ -454,6 +498,15 @@ document.addEventListener('alpine:init', () => {
             this.updateTabStyles()
         },
 
+        moveTab(step) {
+            const tabs = Array.from(this.tabBar.querySelectorAll(':scope > ._fl-tab'))
+            if (!tabs.length) return
+
+            const next = (this.activeTab + step + tabs.length) % tabs.length
+            this.switchTab(next)
+            tabs[next].focus()
+        },
+
         showActiveBlock() {
             const t = this
             this._directBlocks().forEach(function(block, i) {
@@ -465,6 +518,8 @@ document.addEventListener('alpine:init', () => {
             const t = this
             Array.from(this.tabBar.querySelectorAll(':scope > ._fl-tab')).forEach(function(tab, i) {
                 tab.classList.toggle('_fl-tab--active', i === t.activeTab)
+                tab.setAttribute('aria-selected', i === t.activeTab ? 'true' : 'false')
+                tab.tabIndex = i === t.activeTab ? 0 : -1
             })
         },
 

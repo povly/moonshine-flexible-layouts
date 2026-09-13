@@ -5,10 +5,15 @@
         `{{ $flPath ?? $column }}`)"
      {{ $attributes->merge(['data-top-level' => 'fl-root'])->class('_fl-field') }}>
 
-    <div class="_fl-tabs">
+    <div class="_fl-tabs" role="tablist"
+         @keydown.arrow-left.prevent="moveTab(-1)"
+         @keydown.arrow-right.prevent="moveTab(1)">
         @foreach($blocks as $block)
             <button type="button"
+                    role="tab"
                     class="_fl-tab {{ $loop->first ? '_fl-tab--active' : '' }}"
+                    tabindex="{{ $loop->first ? 0 : -1 }}"
+                    @if($loop->first)aria-selected="true"@else aria-selected="false"@endif
                     data-orig-idx="{{ $loop->index }}">
                 @if(!$disableSort)<span class="_fl-tab-grip">⠿</span>@endif
                 @php
@@ -25,6 +30,7 @@
     <div class="_fl-blocks">
         @foreach($blocks as $block)
             <div class="_fl-block {{ $loop->first ? '' : 'hidden' }}"
+                 role="tabpanel"
                  data-row-key="{{ $loop->index }}"
                  data-correct-type="{{ $block->name() }}">
                 {!! $block->renderTabContent() !!}
@@ -48,7 +54,11 @@
                  x-transition.opacity
                  @keydown.escape.window="closePicker()">
                 <div class="_fl-picker"
+                     role="dialog"
+                     aria-modal="true"
+                     aria-label="{{ $labels['add_block'] }}"
                      @click.outside="closePicker()"
+                     @keydown.tab="trapTab($event)"
                      x-transition.scale.origin.center>
 
                     <div class="_fl-picker-header">
