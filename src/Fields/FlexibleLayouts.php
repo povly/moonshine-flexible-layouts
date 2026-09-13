@@ -15,6 +15,7 @@ use MoonShine\Contracts\UI\ActionButtonContract;
 use MoonShine\Contracts\UI\Collection\ComponentsContract;
 use MoonShine\Contracts\UI\FieldContract;
 use MoonShine\Contracts\UI\HasFieldsContract;
+use MoonShine\Laravel\Fields\Relationships\ModelRelationField;
 use MoonShine\UI\Components\ActionButton;
 use MoonShine\UI\Fields\Field;
 use MoonShine\UI\Fields\Hidden;
@@ -264,9 +265,32 @@ final class FlexibleLayouts extends Field
 
     public function getAddRoute(): string
     {
+        $resourceUri = moonshineRequest()->getResourceUri();
+        $pageUri = moonshineRequest()->getPageUri();
+
+        // Inside a relation modal (HasMany/MorphMany form) the ambient request
+        // belongs to the PARENT resource — BlockController::getField() would
+        // then search the parent's fields and answer "Field not found". Walk
+        // the parent chain: the nearest relation field knows this field's own
+        // resource and form page.
+        for (
+            $cursor = $this->getParent();
+            $cursor !== null;
+            $cursor = $cursor->getParent()
+        ) {
+            if ($cursor instanceof ModelRelationField && ! is_null($cursor->getResource())) {
+                $relationResource = $cursor->getResource();
+
+                $resourceUri = $relationResource->getUriKey();
+                $pageUri = $relationResource->getFormPage()?->getUriKey() ?? $pageUri;
+
+                break;
+            }
+        }
+
         return route('moonshine.flexible-layouts.store', [
-            'resourceUri' => moonshineRequest()->getResourceUri(),
-            'pageUri' => moonshineRequest()->getPageUri(),
+            'resourceUri' => $resourceUri,
+            'pageUri' => $pageUri,
         ]);
     }
 

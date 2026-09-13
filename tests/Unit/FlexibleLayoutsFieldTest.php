@@ -6,9 +6,11 @@ namespace Povly\FlexibleLayouts\Tests\Unit;
 
 use MoonShine\UI\Components\Layout\Column;
 use MoonShine\UI\Components\Layout\Flex;
+use MoonShine\Laravel\Fields\Relationships\HasMany;
 use MoonShine\UI\Fields\Text;
 use Povly\FlexibleLayouts\Contracts\BlockContract;
 use Povly\FlexibleLayouts\Fields\FlexibleLayouts;
+use Povly\FlexibleLayouts\Tests\Unit\Fixtures\FaqResource;
 use InvalidArgumentException;
 
 final class FlexibleLayoutsFieldTest extends TestCase
@@ -258,5 +260,32 @@ final class FlexibleLayoutsFieldTest extends TestCase
         self::assertStringContainsString('<svg', (string) $meta['hero']['icon']);
         self::assertNull($meta['cta']['category']);
         self::assertNull($meta['cta']['icon']);
+    }
+
+    public function test_get_add_route_uses_own_resource_context_inside_relation_modal(): void
+    {
+        $field = FaqResource::contentField();
+
+        // HasManyController::formComponent() renders related form fields during
+        // the PARENT resource request and wires them via setParent(). The store
+        // URL must then address the field's own resource, not the parent.
+        // A resource instance is passed because class-strings resolve through
+        // the core resource registry, which testbench does not populate.
+        $hasMany = HasMany::make('Translations', 'translations', resource: app(FaqResource::class));
+        $field->setParent($hasMany);
+
+        $route = $field->getAddRoute();
+
+        $resource = $hasMany->getResource();
+        self::assertStringContainsString(
+            $resource->getUriKey(),
+            $route,
+            'store URL must address the relation resource, not the ambient parent',
+        );
+        self::assertStringContainsString(
+            (string) $resource->getFormPage()?->getUriKey(),
+            $route,
+            'store URL must address the relation resource form page',
+        );
     }
 }

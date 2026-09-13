@@ -6,10 +6,12 @@ namespace Povly\FlexibleLayouts\Tests\Unit;
 
 use MoonShine\Laravel\Providers\MoonShineServiceProvider;
 use Orchestra\Testbench\TestCase as TestbenchTestCase;
+use Povly\FlexibleLayouts\Providers\FlexibleLayoutsServiceProvider;
 
 /**
  * Shared base: boots the MoonShine service provider so core singletons
  * (assets, view renderer) are available for component construction.
+ * The package provider is booted too so field routes exist in tests.
  */
 abstract class TestCase extends TestbenchTestCase
 {
@@ -18,6 +20,9 @@ abstract class TestCase extends TestbenchTestCase
      */
     protected function getPackageProviders($app): array
     {
-        return [MoonShineServiceProvider::class];
+        return [
+            MoonShineServiceProvider::class,
+            FlexibleLayoutsServiceProvider::class,
+        ];
     }
 }
