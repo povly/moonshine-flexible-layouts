@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "skills": {
+    "moonshine-components": {
+      "source": "moonshine-software/forty-five",
+      "sourceType": "github",
+      "skillPath": "skills/moonshine-components/SKILL.md",
+      "computedHash": "874f3a14dc907850373a01aa013770a1f86e0ca22147431345378aa31d7134df"
+    },
+    "moonshine-field": {
+      "source": "moonshine-software/forty-five",
+      "sourceType": "github",
+      "skillPath": "skills/moonshine-field/SKILL.md",
+      "computedHash": "bc3830026776a4850c04af2722c9b182d86050d539009a3d136a94401a1abbf5"
+    },
+    "moonshine-layout": {
+      "source": "moonshine-software/forty-five",
+      "sourceType": "github",
+      "skillPath": "skills/moonshine-layout/SKILL.md",
+      "computedHash": "587057bbced788d51e1940453375a4d1b665b923b4bd21301574672160947547"
+    },
+    "vite": {
+      "source": "antfu/skills",
+      "sourceType": "github",
+      "skillPath": "skills/vite/SKILL.md",
+      "computedHash": "867ff66238f3152e9c494339ad08dc432dd0df5bcf5cc7a00b61a72b580eb908"
+    }
+  }
+}
