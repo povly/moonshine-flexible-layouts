@@ -44,4 +44,7 @@
 
 ## Тестирование
 
-- Автотестов нет. Минимальная проверка изменений: `php -l` на изменённых PHP-файлах, `bun run build`, ручная проверка в хост-приложении (add/remove/reorder, вложенность, лимиты, save/load round-trip)
+- Автотесты есть: PHPUnit + orchestra/testbench (`tests/Unit`) — домен (Block, BlockCollection, FlexibleCast) и поле (FlexibleLayoutsField)
+- После PHP-изменений обязателен `vendor/bin/phpunit`; после правок `resources/**` — `bun run build`
+- `php -l` на изменённых PHP-файлах — быстрая проверка синтаксиса перед коммитом
+- JS-часть проверяется вручную в хост-приложении (add/remove/reorder, вложенность, лимиты, save/load round-trip)
