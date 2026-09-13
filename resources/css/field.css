@@ -348,17 +348,17 @@
     font-size: .875rem;
 }
 
-/* === Sortable ghost === */
+/* === Sortable ghost (classes injected by SortableJS — scope only, do not rename) === */
 
-.sortable-ghost {
+._fl-field .sortable-ghost {
     opacity: .4;
 }
 
-.sortable-chosen {
+._fl-field .sortable-chosen {
     cursor: grabbing;
 }
 
-.sortable-drag {
+._fl-field .sortable-drag {
     box-shadow: 0 8px 24px rgb(0 0 0 / .15);
 }
 

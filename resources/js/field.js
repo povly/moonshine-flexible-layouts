@@ -70,11 +70,13 @@ document.addEventListener('alpine:init', () => {
                 const typeInput = block.querySelector(':scope > ._fl-type')
                 if (!typeInput) return
                 if (typeInput.value !== correctType) {
-                    console.warn('[FL FIX] _type mismatch — fixing', {
-                        name: typeInput.getAttribute('name'),
-                        wasValue: typeInput.value,
-                        correctType: correctType,
-                    })
+                    if (import.meta.env.DEV) {
+                        console.warn('[FlexibleLayouts] _type mismatch — fixing', {
+                            name: typeInput.getAttribute('name'),
+                            wasValue: typeInput.value,
+                            correctType: correctType,
+                        })
+                    }
                     typeInput.value = correctType
                     typeInput.setAttribute('value', correctType)
                 }
@@ -191,6 +193,9 @@ document.addEventListener('alpine:init', () => {
                     }
                 }
             })
+            if (import.meta.env.DEV) {
+                console.debug('[FlexibleLayouts] limit counts', { column: t.column, counts: counts })
+            }
 
             MoonShine.request(t, t.url, 'post', {
                 field: t.column,
@@ -255,6 +260,8 @@ document.addEventListener('alpine:init', () => {
             const block = this.$el.closest('._fl-block')
             if (!block) return
 
+            const name = block.getAttribute('data-correct-type')
+
             const blocks = this._directBlocks()
             const tabIndex = blocks.indexOf(block)
 
@@ -272,6 +279,16 @@ document.addEventListener('alpine:init', () => {
             this.showActiveBlock()
             this.updateTabStyles()
             this.resolveReindex()
+
+            const t = this
+            this.$nextTick(function() {
+                document.dispatchEvent(
+                    new CustomEvent('flexible-layouts:block-removed', {
+                        bubbles: true,
+                        detail: { name: name, column: t.column },
+                    }),
+                )
+            })
         },
 
         // Duplicate a block: fetch a fresh server-rendered instance of the
@@ -319,6 +336,9 @@ document.addEventListener('alpine:init', () => {
                     }
                 }
             })
+            if (import.meta.env.DEV) {
+                console.debug('[FlexibleLayouts] limit counts', { column: t.column, counts: counts })
+            }
 
             MoonShine.request(t, t.url, 'post', {
                 field: t.column,

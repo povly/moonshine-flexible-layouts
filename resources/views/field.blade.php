@@ -3,14 +3,13 @@
         `{{ $column }}`,
         {{ Illuminate\Support\Js::from($blockMeta ?? []) }},
         `{{ $flPath ?? $column }}`)"
-     {{ $attributes->class('_fl-field') }}>
+     {{ $attributes->merge(['data-top-level' => 'fl-root'])->class('_fl-field') }}>
 
     <div class="_fl-tabs">
         @foreach($blocks as $block)
             <button type="button"
                     class="_fl-tab {{ $loop->first ? '_fl-tab--active' : '' }}"
-                    data-orig-idx="{{ $loop->index }}"
-                    @click="switchTab({{ $loop->index }})">
+                    data-orig-idx="{{ $loop->index }}">
                 @if(!$disableSort)<span class="_fl-tab-grip">⠿</span>@endif
                 @php
                     // Icon is developer-controlled via Block::__construct($icon) — rendered
