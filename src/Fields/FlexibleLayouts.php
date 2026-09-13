@@ -21,6 +21,7 @@ use MoonShine\UI\Fields\Hidden;
 use Povly\FlexibleLayouts\Blocks\Block;
 use Povly\FlexibleLayouts\Collections\BlockCollection;
 use Povly\FlexibleLayouts\Contracts\BlockContract;
+use InvalidArgumentException;
 use Throwable;
 
 final class FlexibleLayouts extends Field
@@ -76,7 +77,32 @@ final class FlexibleLayouts extends Field
         ?string $description = null,
         ?string $icon = null,
     ): self {
-        $this->blocks[] = new Block($title, $name, $fields, $limit, $category, $description, $icon);
+        if ($limit !== null && $limit < 1) {
+            throw new InvalidArgumentException(
+                "[FlexibleLayouts] block `{$name}` on column `{$this->getColumn()}` declares limit {$limit}: limit must be >= 1 (use null for unlimited).",
+            );
+        }
+
+        $block = new Block($title, $name, $fields, $limit, $category, $description, $icon);
+
+        // Names are matched after squish/snake normalization (Block::name()),
+        // so registration must reject duplicates post-normalization — a silent
+        // first-match in findByName() would make the second block unreachable.
+        if (! is_null($this->blocks()->findByName($block->name()))) {
+            if (config('flexible-layouts.logging')) {
+                Log::warning('[FlexibleLayouts] block registration rejected: duplicate normalized name', [
+                    'column' => $this->getColumn(),
+                    'name' => $name,
+                    'normalized' => $block->name(),
+                ]);
+            }
+
+            throw new InvalidArgumentException(
+                "[FlexibleLayouts] block `{$name}` on column `{$this->getColumn()}` normalizes to `{$block->name()}`, which is already registered. Block names must be unique after normalization.",
+            );
+        }
+
+        $this->blocks[] = $block;
 
         return $this;
     }
@@ -312,11 +338,43 @@ final class FlexibleLayouts extends Field
             }
 
             if ($item instanceof Field) {
-                $item->resolveFill($data);
+                // Clone BEFORE filling: resolveFill() mutates the field in place
+                // and skips missing keys (FieldEmptyValue early return), so
+                // filling the registry prototypes from $this->blocks would leak
+                // values between same-type block instances and across renders.
+                $item = (clone $item)->resolveFill($data);
             }
 
             return clone $item;
         });
+    }
+
+    /**
+     * Propagate the dot-path to nested FlexibleLayouts fields, recursing
+     * through layout containers (Flex/Column/FieldsGroup) — a nested field
+     * wrapped in containers must address the same AJAX path as a direct one,
+     * otherwise BlockController::getField() cannot resolve it.
+     *
+     * @param  ComponentsContract|Collection  $collection  Block fields (already filled clones)
+     * @param  string  $basePath  Dot-path of the containing block (e.g. "content.section")
+     */
+    private function applyFlPathRecursively(ComponentsContract|Collection $collection, string $basePath): void
+    {
+        foreach ($collection as $item) {
+            if ($item instanceof self) {
+                $item->setFlPath($basePath.'.'.$item->getColumn());
+
+                continue;
+            }
+
+            if ($item instanceof HasComponentsContract) {
+                $this->applyFlPathRecursively($item->getComponents(), $basePath);
+            }
+
+            if ($item instanceof HasFieldsContract) {
+                $this->applyFlPathRecursively($item->getFields(), $basePath);
+            }
+        }
     }
 
     /**
@@ -365,11 +423,10 @@ final class FlexibleLayouts extends Field
                 $item,
             );
 
-            foreach ($fields as $field) {
-                if ($field instanceof FlexibleLayouts) {
-                    $field->setFlPath($this->getFlPath().'.'.$block->name().'.'.$field->getColumn());
-                }
-            }
+            $this->applyFlPathRecursively(
+                $fields,
+                $this->getFlPath().'.'.$block->name(),
+            );
 
             $block->setFields($fields);
 
@@ -421,9 +478,7 @@ final class FlexibleLayouts extends Field
             // the matching getFilledBlocks log warning, this keeps unrecognised
             // blocks round-tripping through save → load until the developer
             // re-registers or explicitly removes them.
-            $preservedUnknown = [];
-
-            $data = collect($requestValues)->map(function (mixed $value, $index) use (&$preservedUnknown): array {
+            $data = collect($requestValues)->map(function (mixed $value, $index): array {
                 if (! is_array($value)) {
                     return [];
                 }
@@ -441,8 +496,6 @@ final class FlexibleLayouts extends Field
                 // Pass-through for unrecognised `_type`: keep the original
                 // entry intact so the next save doesn't delete it.
                 if (is_null($block)) {
-                    $preservedUnknown[] = $value;
-
                     if (config('flexible-layouts.logging')) {
                         Log::warning('[FlexibleLayouts] resolveOnApply() preserved unknown block type', [
                             'column' => $this->getColumn(),
