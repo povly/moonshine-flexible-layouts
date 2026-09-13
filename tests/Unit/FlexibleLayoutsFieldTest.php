@@ -165,4 +165,98 @@ final class FlexibleLayoutsFieldTest extends TestCase
         self::assertSame(1, $field->blocks()->findByName('hero')->limit());
         self::assertFalse($field->blocks()->findByName('text')->hasLimit());
     }
+
+    public function test_resolve_on_apply_preserves_unknown_type_entries_verbatim(): void
+    {
+        $field = FlexibleLayouts::make('Blocks', 'blocks')
+            ->block('hero', 'Hero', [
+                Text::make('Title', 'title'),
+            ]);
+
+        $unknown = ['_type' => 'legacy', 'payload' => ['keep' => 'me']];
+
+        request()->merge(['blocks' => [$unknown]]);
+
+        $result = $field->apply(fn (mixed $data): mixed => $data, []);
+
+        self::assertSame(['blocks' => [$unknown]], $result);
+    }
+
+    public function test_resolve_on_apply_drops_entries_without_type(): void
+    {
+        $field = FlexibleLayouts::make('Blocks', 'blocks')
+            ->block('hero', 'Hero', [
+                Text::make('Title', 'title'),
+            ]);
+
+        request()->merge(['blocks' => [
+            ['title' => 'no type'],
+            'not-even-an-array',
+        ]]);
+
+        $result = $field->apply(fn (mixed $data): mixed => $data, []);
+
+        self::assertSame(['blocks' => []], $result);
+    }
+
+    public function test_resolve_on_apply_runs_known_blocks_through_field_apply(): void
+    {
+        $field = FlexibleLayouts::make('Blocks', 'blocks')
+            ->block('hero', 'Hero', [
+                Text::make('Title', 'title'),
+            ]);
+
+        request()->merge(['blocks' => [
+            ['_type' => 'hero', 'title' => 'Welcome'],
+            ['_type' => 'legacy', 'keep' => true],
+            ['_type' => 'hero', 'title' => 'Bye'],
+        ]]);
+
+        $result = $field->apply(fn (mixed $data): mixed => $data, []);
+
+        self::assertSame([
+            ['_type' => 'hero', 'title' => 'Welcome'],
+            ['_type' => 'legacy', 'keep' => true],
+            ['_type' => 'hero', 'title' => 'Bye'],
+        ], $result['blocks']);
+    }
+
+    public function test_get_filled_blocks_skips_unknown_types(): void
+    {
+        $field = FlexibleLayouts::make('Blocks', 'blocks')
+            ->block('hero', 'Hero', [
+                Text::make('Title', 'title'),
+            ]);
+
+        $field->setValue([
+            ['_type' => 'hero', 'title' => 'Known'],
+            ['_type' => 'gone', 'title' => 'Unknown'],
+            ['no-type' => true],
+        ]);
+
+        $blocks = $field->getFilledBlocks();
+
+        self::assertCount(1, $blocks);
+        self::assertSame('Known', self::titleOf($blocks[0]));
+    }
+
+    public function test_get_block_titles_and_meta_maps(): void
+    {
+        $field = FlexibleLayouts::make('Blocks', 'blocks')
+            ->block('hero', 'Hero', [], category: 'Header', description: 'Big banner', icon: 'photo')
+            ->block('cta', 'CTA', [], limit: 1);
+
+        self::assertSame(
+            ['hero' => 'Hero', 'cta' => 'CTA'],
+            $field->getBlockTitles(),
+        );
+
+        $meta = $field->getBlockMeta();
+
+        self::assertSame('Header', $meta['hero']['category']);
+        self::assertSame('Big banner', $meta['hero']['description']);
+        self::assertStringContainsString('<svg', (string) $meta['hero']['icon']);
+        self::assertNull($meta['cta']['category']);
+        self::assertNull($meta['cta']['icon']);
+    }
 }

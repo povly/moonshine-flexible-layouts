@@ -8,5 +8,6 @@ Route::moonshine(static function (): void {
     $prefix = config('flexible-layouts.route_prefix', 'flexible-layouts');
 
     Route::post("{$prefix}/store/{pageUri}/{resourceUri?}", [BlockController::class, 'store'])
+        ->middleware('throttle:60,1')
         ->name('flexible-layouts.store');
 });
