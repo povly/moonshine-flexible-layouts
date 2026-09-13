@@ -37,7 +37,7 @@ final class BlockController extends MoonShineController
             $field->formName($resource->getUriKey());
         }
 
-        $blockName = (string) $request->get('name');
+        $blockName = (string) $request->input('name');
 
         /** @var Block|null $block */
         $block = $field
@@ -134,7 +134,7 @@ final class BlockController extends MoonShineController
             };
         }
 
-        $path = (string) $request->get('path', $request->get('field'));
+        $path = (string) $request->input('path', $request->input('field'));
         $segments = explode('.', $path);
 
         $topColumn = array_shift($segments);
